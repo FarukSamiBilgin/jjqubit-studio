@@ -1,0 +1,186 @@
+{
+  "format": "jjqubit-netlist",
+  "version": "1.0",
+  "name": "Transmon + readout resonator",
+  "nodes": [
+    "gnd",
+    "q",
+    "r",
+    "fin",
+    "fout"
+  ],
+  "elements": [
+    {
+      "id": "J1",
+      "type": "junction",
+      "params": {
+        "Ic": {
+          "value": 30.0,
+          "unit": "nA"
+        },
+        "Cj": {
+          "value": 2.0,
+          "unit": "fF"
+        },
+        "Rn": {
+          "value": 10.0,
+          "unit": "kohm"
+        }
+      }
+    },
+    {
+      "id": "Cs",
+      "type": "capacitor",
+      "params": {
+        "C": {
+          "value": 70.0,
+          "unit": "fF"
+        }
+      }
+    },
+    {
+      "id": "Cg",
+      "type": "capacitor",
+      "params": {
+        "C": {
+          "value": 5.0,
+          "unit": "fF"
+        }
+      }
+    },
+    {
+      "id": "RES1",
+      "type": "resonator",
+      "params": {
+        "f0": {
+          "value": 7.2,
+          "unit": "GHz"
+        },
+        "Q": {
+          "value": 8000.0,
+          "unit": ""
+        }
+      }
+    },
+    {
+      "id": "Ck",
+      "type": "capacitor",
+      "params": {
+        "C": {
+          "value": 8.0,
+          "unit": "fF"
+        }
+      }
+    },
+    {
+      "id": "TL1",
+      "type": "transmission_line",
+      "params": {
+        "Z0": {
+          "value": 50.0,
+          "unit": "ohm"
+        },
+        "length": {
+          "value": 6.0,
+          "unit": "mm"
+        },
+        "eps_eff": {
+          "value": 6.45,
+          "unit": ""
+        }
+      }
+    },
+    {
+      "id": "Cload",
+      "type": "capacitor",
+      "params": {
+        "C": {
+          "value": 1.0,
+          "unit": "fF"
+        }
+      }
+    },
+    {
+      "id": "GND1",
+      "type": "ground",
+      "params": {}
+    }
+  ],
+  "connections": [
+    {
+      "element": "J1",
+      "terminal": 0,
+      "node": "q"
+    },
+    {
+      "element": "J1",
+      "terminal": 1,
+      "node": "gnd"
+    },
+    {
+      "element": "Cs",
+      "terminal": 0,
+      "node": "q"
+    },
+    {
+      "element": "Cs",
+      "terminal": 1,
+      "node": "gnd"
+    },
+    {
+      "element": "Cg",
+      "terminal": 0,
+      "node": "q"
+    },
+    {
+      "element": "Cg",
+      "terminal": 1,
+      "node": "r"
+    },
+    {
+      "element": "RES1",
+      "terminal": 0,
+      "node": "r"
+    },
+    {
+      "element": "RES1",
+      "terminal": 1,
+      "node": "gnd"
+    },
+    {
+      "element": "Ck",
+      "terminal": 0,
+      "node": "r"
+    },
+    {
+      "element": "Ck",
+      "terminal": 1,
+      "node": "fin"
+    },
+    {
+      "element": "TL1",
+      "terminal": 0,
+      "node": "fin"
+    },
+    {
+      "element": "TL1",
+      "terminal": 1,
+      "node": "fout"
+    },
+    {
+      "element": "Cload",
+      "terminal": 0,
+      "node": "fout"
+    },
+    {
+      "element": "Cload",
+      "terminal": 1,
+      "node": "gnd"
+    },
+    {
+      "element": "GND1",
+      "terminal": 0,
+      "node": "gnd"
+    }
+  ]
+}

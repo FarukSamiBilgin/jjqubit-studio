@@ -1,0 +1,111 @@
+{
+  "format": "jjqubit-netlist",
+  "version": "1.0",
+  "name": "Current-biased RCSJ junction",
+  "nodes": [
+    "gnd",
+    "n1"
+  ],
+  "elements": [
+    {
+      "id": "Ib",
+      "type": "current_source",
+      "params": {
+        "I": {
+          "value": 25.0,
+          "unit": "nA"
+        }
+      }
+    },
+    {
+      "id": "J1",
+      "type": "junction",
+      "params": {
+        "Ic": {
+          "value": 20.0,
+          "unit": "nA"
+        },
+        "Cj": {
+          "value": 3.0,
+          "unit": "fF"
+        },
+        "Rn": {
+          "value": 8.0,
+          "unit": "kohm"
+        }
+      }
+    },
+    {
+      "id": "Cs",
+      "type": "capacitor",
+      "params": {
+        "C": {
+          "value": 50.0,
+          "unit": "fF"
+        }
+      }
+    },
+    {
+      "id": "L1",
+      "type": "inductor",
+      "params": {
+        "L": {
+          "value": 1.5,
+          "unit": "nH"
+        }
+      }
+    },
+    {
+      "id": "GND1",
+      "type": "ground",
+      "params": {}
+    }
+  ],
+  "connections": [
+    {
+      "element": "Ib",
+      "terminal": 0,
+      "node": "n1"
+    },
+    {
+      "element": "Ib",
+      "terminal": 1,
+      "node": "gnd"
+    },
+    {
+      "element": "J1",
+      "terminal": 0,
+      "node": "n1"
+    },
+    {
+      "element": "J1",
+      "terminal": 1,
+      "node": "gnd"
+    },
+    {
+      "element": "Cs",
+      "terminal": 0,
+      "node": "n1"
+    },
+    {
+      "element": "Cs",
+      "terminal": 1,
+      "node": "gnd"
+    },
+    {
+      "element": "L1",
+      "terminal": 0,
+      "node": "n1"
+    },
+    {
+      "element": "L1",
+      "terminal": 1,
+      "node": "gnd"
+    },
+    {
+      "element": "GND1",
+      "terminal": 0,
+      "node": "gnd"
+    }
+  ]
+}
