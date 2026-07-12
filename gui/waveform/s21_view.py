@@ -1,16 +1,14 @@
-"""Continuous S21 transmission-curve view (classical-solver results).
+"""Continuous S21 transmission-curve view (classical-solver ``/readout`` group).
 
 Renders magnitude (dB) and phase (deg) vs. frequency as two vertically
 stacked, x-linked plots -- a continuous sweep, unlike the discrete
 energy-level ladder in :mod:`gui.waveform.energy_level_view`, so it gets
 its own plot layout rather than being squeezed into a shared abstraction.
 
-Built against a PROVISIONAL classical-result HDF5 schema (see
-``gui/waveform/hdf5_reader.py``) since solver-classical's real output
-layout (Task #2) has not been finalized/relayed yet. Only
-:func:`gui.waveform.hdf5_reader.load_classical_result` should need to
-change once it is -- this view consumes the schema-independent
-:class:`~gui.waveform.hdf5_reader.ClassicalResult` dataclass.
+Consumes the schema-independent
+:class:`~gui.waveform.hdf5_reader.ReadoutS21` dataclass, which
+:func:`~gui.waveform.hdf5_reader.load_classical_result` fills from the
+finalized ``/readout`` group (Task #2).
 """
 from __future__ import annotations
 
@@ -29,7 +27,7 @@ from PySide6.QtWidgets import (
 from .channel_toggle import ChannelToggleList
 from .cursor_tool import CursorReadout
 from .export import export_series_csv, save_figure_png
-from .hdf5_reader import ClassicalResult, load_classical_result
+from .hdf5_reader import ReadoutS21
 
 MAGNITUDE_CHANNEL = "Magnitude (dB)"
 PHASE_CHANNEL = "Phase (deg)"
@@ -40,7 +38,7 @@ class S21View(QWidget):
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self.result: ClassicalResult | None = None
+        self.readout: ReadoutS21 | None = None
 
         self.graphics = pg.GraphicsLayoutWidget()
         self.graphics.setBackground("k")
@@ -90,21 +88,19 @@ class S21View(QWidget):
 
     # -- data loading -----------------------------------------------------
 
-    def load_file(self, path: str | Path) -> None:
-        """Read a classical-solver HDF5 file at ``path`` and display it."""
-        self.load_result(load_classical_result(path))
-
-    def load_result(self, result: ClassicalResult) -> None:
-        """Populate both curves and the info panel from ``result``."""
-        self.result = result
-        self.mag_curve.setData(result.frequency_GHz, result.magnitude_dB)
-        self.phase_curve.setData(result.frequency_GHz, result.phase_deg)
+    def load_readout(self, readout: ReadoutS21) -> None:
+        """Populate both curves and the info panel from a :class:`ReadoutS21`."""
+        self.readout = readout
+        self.mag_curve.setData(readout.frequency_GHz, readout.magnitude_dB)
+        self.phase_curve.setData(readout.frequency_GHz, readout.phase_deg)
         self.mag_plot.vb.autoRange()
         self.phase_plot.vb.autoRange()
         self.info_label.setText(
-            f"<b>{result.netlist_name}</b><br>"
-            f"{len(result.frequency_GHz)} points, "
-            f"{result.frequency_GHz.min():.4g}–{result.frequency_GHz.max():.4g} GHz"
+            f"Resonator {readout.resonator_id} @ node {readout.active_node}<br>"
+            f"f0 = {readout.f0_GHz:.5g} GHz, Q_int = {readout.Q_internal:.4g}<br>"
+            f"kappa_total = {readout.kappa_total_MHz:.4g} MHz<br>"
+            f"{len(readout.frequency_GHz)} points, "
+            f"{readout.frequency_GHz.min():.5g}–{readout.frequency_GHz.max():.5g} GHz"
         )
 
     # -- channel toggle -----------------------------------------------------
@@ -119,15 +115,15 @@ class S21View(QWidget):
 
     def export_csv(self, path: str | Path) -> None:
         """Write frequency, magnitude (dB) and phase (deg) to a CSV file."""
-        if self.result is None:
-            raise ValueError("no result loaded")
+        if self.readout is None:
+            raise ValueError("no readout loaded")
         export_series_csv(
             path,
             "frequency_GHz",
-            self.result.frequency_GHz,
+            self.readout.frequency_GHz,
             {
-                "magnitude_dB": self.result.magnitude_dB,
-                "phase_deg": self.result.phase_deg,
+                "s21_mag_db": self.readout.magnitude_dB,
+                "s21_phase_deg": self.readout.phase_deg,
             },
         )
 
@@ -135,17 +131,17 @@ class S21View(QWidget):
         """Render the magnitude/phase sweep to a PNG file via matplotlib."""
         import matplotlib.pyplot as plt
 
-        if self.result is None:
-            raise ValueError("no result loaded")
+        if self.readout is None:
+            raise ValueError("no readout loaded")
         fig, (ax_mag, ax_phase) = plt.subplots(2, 1, sharex=True, figsize=(6, 6))
-        ax_mag.plot(self.result.frequency_GHz, self.result.magnitude_dB, color="tab:blue")
+        ax_mag.plot(self.readout.frequency_GHz, self.readout.magnitude_dB, color="tab:blue")
         ax_mag.set_ylabel("|S21| (dB)")
         ax_mag.grid(True, alpha=0.3)
-        ax_phase.plot(self.result.frequency_GHz, self.result.phase_deg, color="tab:orange")
+        ax_phase.plot(self.readout.frequency_GHz, self.readout.phase_deg, color="tab:orange")
         ax_phase.set_ylabel("phase (deg)")
         ax_phase.set_xlabel("frequency (GHz)")
         ax_phase.grid(True, alpha=0.3)
-        fig.suptitle(self.result.netlist_name)
+        fig.suptitle(f"S21 — resonator {self.readout.resonator_id}")
         save_figure_png(fig, path)
 
     def prompt_export_csv(self) -> None:

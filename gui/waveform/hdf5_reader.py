@@ -2,18 +2,17 @@
 
 This module does no physics -- it only opens the HDF5 files the solvers
 write and reshapes their contents into dataclasses the view widgets can
-plot. See ``core/solvers/quantum/hdf5_io.py`` for the authoritative,
-frozen quantum-result layout this reader is built against (Task #3, done).
+plot. Both solver-output layouts are now finalized and this reader is built
+against the authoritative docstrings:
 
-The classical-solver (Task #2) result layout is NOT finalized yet -- it is
-being built in parallel. :func:`load_classical_result` below is written
-against a PROVISIONAL schema we invented ourselves purely so the S21 view
-has something real to render and test against today (see
-``tests/waveform/classical_synthetic.py`` for the fixture that builds a
-file matching it). Once ``main`` relays the real layout from
-solver-classical, only ``_CLASSICAL_FORMAT_PROVISIONAL`` and
-:func:`load_classical_result` need to change -- the view widgets consume
-:class:`ClassicalResult`, not the file directly.
+* quantum: ``core/solvers/quantum/hdf5_io.py`` (Task #3) -- ``/qubit`` etc.
+* classical: ``core/solvers/classical/hdf5_io.py`` (Task #2) -- an optional
+  ``/readout`` group (S21 transmission) and/or an optional ``/rcsj`` group
+  (I-V curve + phase dynamics); at least one is always present.
+
+The view widgets consume the dataclasses below (:class:`QuantumResult`,
+:class:`ClassicalResult`), never the HDF5 file directly, so a future layout
+change is absorbed here rather than rippling into the plotting code.
 """
 from __future__ import annotations
 
@@ -30,9 +29,9 @@ import numpy as np
 # documented data contract, not an implementation detail.
 QUANTUM_FORMAT = "jjqubit-quantum-result"
 
-# PROVISIONAL -- our own placeholder for the not-yet-finalized classical
-# solver output, used only until main relays the real layout.
-CLASSICAL_FORMAT_PROVISIONAL = "jjqubit-classical-result-provisional"
+# Matches core.solvers.classical.hdf5_io.FORMAT -- the finalized
+# classical-result format string.
+CLASSICAL_FORMAT = "jjqubit-classical-result"
 
 ResultKind = Literal["quantum", "classical", "unknown"]
 
@@ -40,20 +39,20 @@ ResultKind = Literal["quantum", "classical", "unknown"]
 def detect_result_kind(path: str | Path) -> ResultKind:
     """Inspect an HDF5 file's root attrs/groups and classify its contents.
 
-    Uses the root ``format`` attribute first, and falls back to structural
-    checks (presence of the ``/qubit`` or ``/s21`` groups) so a classical
-    file written under a different ``format`` string than our provisional
-    guess is still recognized once solver-classical lands.
+    Uses the root ``format`` attribute first, then falls back to structural
+    checks (presence of the ``/qubit`` group for quantum, or the ``/rcsj`` /
+    ``/readout`` groups for classical) so a file written under an unexpected
+    ``format`` string is still recognized from its structure.
     """
     with h5py.File(path, "r") as f:
         fmt = f.attrs.get("format")
         if fmt == QUANTUM_FORMAT:
             return "quantum"
-        if fmt == CLASSICAL_FORMAT_PROVISIONAL:
+        if fmt == CLASSICAL_FORMAT:
             return "classical"
         if "qubit" in f:
             return "quantum"
-        if "s21" in f:
+        if "rcsj" in f or "readout" in f:
             return "classical"
     return "unknown"
 
@@ -152,45 +151,171 @@ def load_quantum_result(path: str | Path) -> QuantumResult:
 
 
 @dataclass(frozen=True)
-class ClassicalResult:
-    """S21 transmission sweep, read from a (currently provisional) classical-solver file.
+class ReadoutS21:
+    """The ``/readout`` S21 transmission sweep from a classical-solver file.
+
+    All arrays share shape ``(n,)``. Units match the file (see
+    ``core/solvers/classical/hdf5_io.py``): frequency in GHz, magnitude in
+    dB, phase in degrees; the real/imaginary parts are dimensionless.
 
     Args:
-        netlist_name: The netlist this sweep was computed from.
-        frequency_GHz: Sweep frequency axis, shape ``(n,)``.
-        magnitude_dB: ``|S21|`` in dB, shape ``(n,)``.
-        phase_deg: ``arg(S21)`` in degrees, shape ``(n,)``.
+        frequency_GHz: Sweep frequency axis.
+        magnitude_dB: ``20*log10|S21|``.
+        phase_deg: ``arg(S21)`` in degrees.
+        s21_real, s21_imag: The complex S21, split into parts.
+        f0_GHz: Resonator bare resonance frequency.
+        Q_internal: Internal quality factor.
+        kappa_total_MHz: Total linewidth (internal + external), in MHz.
+        resonator_id, active_node: Netlist provenance.
     """
 
-    netlist_name: str
     frequency_GHz: np.ndarray
     magnitude_dB: np.ndarray
     phase_deg: np.ndarray
+    s21_real: np.ndarray
+    s21_imag: np.ndarray
+    f0_GHz: float
+    Q_internal: float
+    kappa_total_MHz: float
+    resonator_id: str
+    active_node: str
+
+
+@dataclass(frozen=True)
+class RcsjIVCurve:
+    """The ``/rcsj/iv_curve`` bias sweep (both directions, for hysteresis).
+
+    Currents in nA, voltages in uV. The up/down sweeps trace the ascending
+    and descending bias directions; for an underdamped junction they differ
+    (retrapping-current hysteresis).
+    """
+
+    bias_current_up_nA: np.ndarray
+    voltage_up_uV: np.ndarray
+    bias_current_down_nA: np.ndarray
+    voltage_down_uV: np.ndarray
+
+
+@dataclass(frozen=True)
+class RcsjPhaseDynamics:
+    """The ``/rcsj/phase_dynamics`` time trace.
+
+    Time in ns, phase in rad, voltage in uV.
+
+    Args:
+        time_ns, phase_rad, voltage_uV: The time-domain traces, shape ``(n,)``.
+        dc_voltage_uV: Settled (time-averaged) DC voltage, in uV.
+        bias_current_nA: Bias current the trace was computed at, in nA.
+    """
+
+    time_ns: np.ndarray
+    phase_rad: np.ndarray
+    voltage_uV: np.ndarray
+    dc_voltage_uV: float
+    bias_current_nA: float
+
+
+@dataclass(frozen=True)
+class RcsjData:
+    """The ``/rcsj`` group: scalar junction parameters + I-V curve + phase dynamics."""
+
+    iv_curve: RcsjIVCurve
+    phase_dynamics: RcsjPhaseDynamics
+    Ic_nA: float
+    Rn_total_ohm: float
+    C_total_fF: float
+    bias_current_nA: float
+    plasma_frequency_GHz: float
+    quality_factor: float
+    junction_id: str
+
+
+@dataclass(frozen=True)
+class ClassicalResult:
+    """A classical-solver result: an optional S21 readout and/or an optional RCSJ analysis.
+
+    At least one of :attr:`readout` / :attr:`rcsj` is non-``None`` (the
+    solver raises upstream for a netlist with neither topology).
+
+    Args:
+        netlist_name: The netlist this result was computed from.
+        readout: The S21 transmission sweep, or ``None`` if the netlist has
+            no resonator+feedline readout topology.
+        rcsj: The RCSJ I-V + phase-dynamics analysis, or ``None`` if the
+            netlist has no current-biased junction.
+    """
+
+    netlist_name: str
+    readout: ReadoutS21 | None
+    rcsj: RcsjData | None
+
+
+def _read_readout(group: h5py.Group) -> ReadoutS21:
+    return ReadoutS21(
+        frequency_GHz=np.asarray(group["frequency_GHz"][:]),
+        magnitude_dB=np.asarray(group["s21_mag_db"][:]),
+        phase_deg=np.asarray(group["s21_phase_deg"][:]),
+        s21_real=np.asarray(group["s21_real"][:]),
+        s21_imag=np.asarray(group["s21_imag"][:]),
+        f0_GHz=float(group.attrs["f0_GHz"]),
+        Q_internal=float(group.attrs["Q_internal"]),
+        kappa_total_MHz=float(group.attrs["kappa_total_MHz"]),
+        resonator_id=str(group.attrs["resonator_id"]),
+        active_node=str(group.attrs["active_node"]),
+    )
+
+
+def _read_rcsj(group: h5py.Group) -> RcsjData:
+    iv = group["iv_curve"]
+    dyn = group["phase_dynamics"]
+    return RcsjData(
+        iv_curve=RcsjIVCurve(
+            bias_current_up_nA=np.asarray(iv["bias_current_up_nA"][:]),
+            voltage_up_uV=np.asarray(iv["voltage_up_uV"][:]),
+            bias_current_down_nA=np.asarray(iv["bias_current_down_nA"][:]),
+            voltage_down_uV=np.asarray(iv["voltage_down_uV"][:]),
+        ),
+        phase_dynamics=RcsjPhaseDynamics(
+            time_ns=np.asarray(dyn["time_ns"][:]),
+            phase_rad=np.asarray(dyn["phase_rad"][:]),
+            voltage_uV=np.asarray(dyn["voltage_uV"][:]),
+            dc_voltage_uV=float(dyn.attrs["dc_voltage_uV"]),
+            bias_current_nA=float(dyn.attrs["bias_current_nA"]),
+        ),
+        Ic_nA=float(group.attrs["Ic_nA"]),
+        Rn_total_ohm=float(group.attrs["Rn_total_ohm"]),
+        C_total_fF=float(group.attrs["C_total_fF"]),
+        bias_current_nA=float(group.attrs["bias_current_nA"]),
+        plasma_frequency_GHz=float(group.attrs["plasma_frequency_GHz"]),
+        quality_factor=float(group.attrs["quality_factor"]),
+        junction_id=str(group.attrs["junction_id"]),
+    )
 
 
 def load_classical_result(path: str | Path) -> ClassicalResult:
-    """Load an S21 sweep from a classical-solver HDF5 file.
+    """Load a classical-solver HDF5 file (see module docstring) into a :class:`ClassicalResult`.
 
-    PROVISIONAL: reads the placeholder schema documented at the top of this
-    module (``/s21/frequency_GHz``, ``/s21/magnitude_dB``, ``/s21/phase_deg``),
-    invented for development purposes since solver-classical's real layout
-    (Task #2) has not been relayed yet. Replace this function's body (only)
-    once ``main`` provides the real layout -- :class:`ClassicalResult` and
-    the S21 view are written against the dataclass, not this function, so
-    they should not need to change.
+    Reads whichever of the ``/readout`` and ``/rcsj`` groups are present --
+    both are optional, but the solver guarantees at least one.
 
     Args:
-        path: Path to an HDF5 file with an ``/s21`` group.
+        path: Path to a file written by
+            ``core.solvers.classical.hdf5_io.write_hdf5``.
 
     Raises:
-        KeyError: if the expected provisional datasets are not present.
+        ValueError: if neither the ``/readout`` nor the ``/rcsj`` group is
+            present (not a classical result this viewer can render).
         OSError: if the file cannot be opened (propagated from h5py).
     """
     with h5py.File(path, "r") as f:
-        s21 = f["s21"]
+        readout = _read_readout(f["readout"]) if "readout" in f else None
+        rcsj = _read_rcsj(f["rcsj"]) if "rcsj" in f else None
+        if readout is None and rcsj is None:
+            raise ValueError(
+                f"{path!r}: classical result has neither a /readout nor a /rcsj group"
+            )
         return ClassicalResult(
             netlist_name=str(f.attrs.get("netlist_name", "")),
-            frequency_GHz=np.asarray(s21["frequency_GHz"][:]),
-            magnitude_dB=np.asarray(s21["magnitude_dB"][:]),
-            phase_deg=np.asarray(s21["phase_deg"][:]),
+            readout=readout,
+            rcsj=rcsj,
         )

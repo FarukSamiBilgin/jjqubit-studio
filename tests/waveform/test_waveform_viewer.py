@@ -3,9 +3,9 @@ from __future__ import annotations
 
 import pytest
 
+from gui.waveform.classical_view import ClassicalView
 from gui.waveform.energy_level_view import EnergyLevelView
 from gui.waveform.main_widget import WaveformViewer
-from gui.waveform.s21_view import S21View
 
 
 class TestWaveformViewer:
@@ -17,19 +17,25 @@ class TestWaveformViewer:
         assert viewer.energy_level_view.result is not None
         assert str(quantum_result_h5) in viewer.file_label.text()
 
-    def test_opens_classical_file_in_s21_view(self, qapp, classical_result_h5):
+    def test_opens_classical_file_in_classical_view(self, qapp, classical_result_h5):
         viewer = WaveformViewer()
         viewer.open_file(classical_result_h5)
-        assert viewer.stack.currentWidget() is viewer.s21_view
-        assert isinstance(viewer.stack.currentWidget(), S21View)
-        assert viewer.s21_view.result is not None
+        assert viewer.stack.currentWidget() is viewer.classical_view
+        assert isinstance(viewer.stack.currentWidget(), ClassicalView)
+        assert viewer.classical_view.result is not None
+        # Synthetic fixture carries both groups -> all three tabs present.
+        assert viewer.classical_view.tab_titles() == [
+            "S21 (readout)",
+            "I-V curve",
+            "Phase dynamics",
+        ]
 
     def test_switching_between_files_swaps_view(self, qapp, quantum_result_h5, classical_result_h5):
         viewer = WaveformViewer()
         viewer.open_file(quantum_result_h5)
         assert viewer.stack.currentWidget() is viewer.energy_level_view
         viewer.open_file(classical_result_h5)
-        assert viewer.stack.currentWidget() is viewer.s21_view
+        assert viewer.stack.currentWidget() is viewer.classical_view
 
     def test_unrecognized_format_raises(self, qapp, tmp_path):
         import h5py

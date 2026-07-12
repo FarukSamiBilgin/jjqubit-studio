@@ -3,10 +3,10 @@
 Reads a solver result HDF5 file, detects whether it is a quantum-solver or
 classical-solver result (see ``gui/waveform/hdf5_reader.py``) and shows the
 matching view -- :class:`~gui.waveform.energy_level_view.EnergyLevelView`
-for discrete spectra, :class:`~gui.waveform.s21_view.S21View` for
-continuous S21 sweeps. This is the widget ``app-core`` (Task #6) is
-expected to embed; it is also usable standalone via
-``python -m gui.waveform`` (see ``__main__.py``).
+for discrete spectra, :class:`~gui.waveform.classical_view.ClassicalView`
+(tabbed S21 / I-V / phase-dynamics) for continuous classical results. This
+is the widget ``app-core`` (Task #6) embeds; it is also usable standalone
+via ``python -m gui.waveform`` (see ``__main__.py``).
 
 Does no physics and no HDF5-schema logic of its own -- all of that lives in
 ``hdf5_reader.py``; this module only wires file I/O to the two view widgets.
@@ -27,9 +27,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .classical_view import ClassicalView
 from .energy_level_view import EnergyLevelView
 from .hdf5_reader import detect_result_kind
-from .s21_view import S21View
 
 
 class WaveformViewer(QWidget):
@@ -39,14 +39,14 @@ class WaveformViewer(QWidget):
         super().__init__(parent)
 
         self.energy_level_view = EnergyLevelView()
-        self.s21_view = S21View()
+        self.classical_view = ClassicalView()
         self._placeholder = QLabel("Open a solver result HDF5 file to begin.")
         self._placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.stack = QStackedWidget()
         self.stack.addWidget(self._placeholder)
         self.stack.addWidget(self.energy_level_view)
-        self.stack.addWidget(self.s21_view)
+        self.stack.addWidget(self.classical_view)
         self.stack.setCurrentWidget(self._placeholder)
 
         open_btn = QPushButton("Open HDF5…")
@@ -67,15 +67,15 @@ class WaveformViewer(QWidget):
 
         Raises:
             ValueError: if the file's format cannot be recognized as either
-                a quantum or a (provisional) classical solver result.
+                a quantum or a classical solver result.
         """
         kind = detect_result_kind(path)
         if kind == "quantum":
             self.energy_level_view.load_file(path)
             self.stack.setCurrentWidget(self.energy_level_view)
         elif kind == "classical":
-            self.s21_view.load_file(path)
-            self.stack.setCurrentWidget(self.s21_view)
+            self.classical_view.load_file(path)
+            self.stack.setCurrentWidget(self.classical_view)
         else:
             raise ValueError(f"{path!r}: unrecognized result format")
         self.file_label.setText(str(path))

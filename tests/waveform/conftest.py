@@ -80,10 +80,10 @@ def quantum_result_h5(tmp_path, transmon_netlist) -> pathlib.Path:
 def classical_result_h5(tmp_path) -> pathlib.Path:
     """A synthetic classical-result HDF5 file (see ``classical_synthetic.py``).
 
-    solver-classical's real HDF5 layout (Task #2) is not finalized/relayed
-    yet, so this builds a file matching the PROVISIONAL schema
-    ``gui/waveform/hdf5_reader.py`` reads today. Swap for a fixture based on
-    real solver-classical output once ``main`` relays its layout.
+    Built in the finalized classical schema (Task #2): a ``/readout`` S21
+    group plus an ``/rcsj`` I-V + phase-dynamics group, so every classical
+    sub-view is exercised. The numbers are fabricated; the layout matches
+    what ``core.solvers.classical`` actually writes.
     """
     out_path = tmp_path / "classical_result.h5"
     write_synthetic_classical_hdf5(out_path, netlist_name="Synthetic S21 sweep")
