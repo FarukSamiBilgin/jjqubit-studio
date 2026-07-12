@@ -239,8 +239,14 @@ def dispersive_shift_multilevel_hz(
         levels_hz: Transmon eigen-energies ``E_i/h`` in Hz (index 0 = ground).
         n_matrix: Charge-operator matrix elements ``<i|n|j>`` in the same basis
             ordering as ``levels_hz`` (from :func:`number_operator_matrix`).
-        g01_hz: Bare 0<->1 coupling strength ``g01`` in Hz.
-        resonator_hz: Bare resonator frequency ``w_r`` in Hz.
+        g01_hz: The COMPLETE physical 0<->1 vacuum coupling ``g01`` in Hz (i.e.
+            the |0,1phot> <-> |1,0phot> Hamiltonian matrix element, which already
+            includes the n01 charge matrix element). This is NOT the coefficient
+            of the bare charge operator in a ``coeff * n * (a+a_dag)`` Hamiltonian
+            -- that coefficient is ``g01/n01``. The formula rescales every OTHER
+            transition internally via ``g_ij = g01 * |n_ij|/n01``, so passing
+            ``g01`` already multiplied by n01 would double-count it.
+        resonator_hz: Bare (uncoupled) resonator frequency ``w_r`` in Hz.
 
     Returns:
         ``chi`` in Hz (negative when the qubit is below the resonator here).

@@ -7,12 +7,22 @@ ground truth (from-scratch charge-basis diagonalization + independent multilevel
 dispersive formula, all in reference.py). The HDF5 output is also round-tripped
 to confirm the persisted values and unit tags are correct.
 
-g CONVENTION (important, verified here): solver-quantum reports ``g_GHz`` as the
-coefficient of the BARE charge operator in ``g * n * (a + a_dag)``. The physical
-0<->1 vacuum coupling is therefore ``g_GHz * n01`` (n01 ~ 1.14 for this
-transmon), NOT g_GHz itself. Anyone comparing g to a "vacuum Rabi rate" must
-apply this factor. With the factor applied, the independent multilevel chi
-formula reproduces solver-quantum's non-perturbative chi to ~0.5%.
+g CONVENTION (important, independently verified here): solver-quantum reports
+``g_GHz`` as the COMPLETE physical 0<->1 vacuum coupling ``g01 = 2*e*beta*n01*
+delta_V0/h`` (Krantz et al. 2019; the n01 charge matrix element is already baked
+in). The coefficient that multiplies the BARE charge operator inside a
+``coeff * n * (a + a_dag)`` Hamiltonian is a different quantity,
+``g_bare = g01 / n01``, because the operator ``n`` itself supplies n01 at the
+0-1 block. Our reference formula ``dispersive_shift_multilevel_hz`` takes the
+COMPLETE physical g01 as input (it re-derives every other transition via
+``g_ij = g01 * |n_ij|/n01``), so we feed it ``g_GHz`` DIRECTLY -- multiplying by
+n01 first would double-count it. This convention was pinned by a from-scratch
+QuTiP diagonalization (build ``g_bare * n (x) (a+a_dag)`` with
+``g_bare = g_GHz/n01`` so the 0-1 coupling equals g_GHz, then diagonalize
+exactly): it endorses chi ~= -371.7 kHz, NOT the ~-483 kHz that the earlier
+double-counted call produced. Both the multilevel formula (fed g_GHz directly)
+and solver-quantum's exact HilbertSpace diagonalization agree with that QuTiP
+anchor to <0.5%.
 
 Ground truth (Cj+Cs+Cg = 77 fF): Ej/h ~ 14.9005 GHz, Ec/h ~ 251.56 MHz,
 E01 ~ 5.2112 GHz, anharmonicity ~ -284.99 MHz.
@@ -72,29 +82,77 @@ def test_quantum_spectrum_matches_reference(solved):
 
 
 def test_quantum_chi_matches_independent_multilevel_formula(solved):
-    """solver-quantum chi matches the independent multilevel formula to <3%.
+    """solver-quantum chi matches TWO independent references to <3%.
 
     solver-quantum computes chi by exact diagonalization of the transmon+
-    resonator (scqubits.HilbertSpace). We cross-check with an *independently
-    derived* multilevel second-order formula (reference.py), evaluated with the
-    same real transmon matrix elements. Because solver-quantum's g multiplies the
-    BARE n operator, the physical 0<->1 coupling passed to the formula is
-    g_GHz * n01.
+    resonator (scqubits.HilbertSpace). We check it against two references that do
+    NOT share solver-quantum's coupling-convention plumbing:
+
+      1. reference.dispersive_shift_multilevel_hz -- an independently derived
+         multilevel 2nd-order perturbation sum.
+      2. A from-scratch QuTiP diagonalization built HERE.
+
+    Convention (independently derived, Krantz et al. 2019 / Koch 2007):
+    solver-quantum's ``g_GHz`` is the COMPLETE physical 0<->1 vacuum coupling
+    ``g01`` (the n01 charge matrix element is already included). Our multilevel
+    formula takes that complete g01 directly. The QuTiP Hamiltonian, in contrast,
+    is written as ``coeff * n (x) (a + a_dag)`` where ``n`` is the bare charge
+    operator, so its coefficient must be ``g_bare = g01 / n01`` for the 0-1 block
+    coupling to equal g01. Both paths must land on the same chi, which is the
+    tie-breaker that neither formula shares with solver-quantum.
+
+    Regression value: this test previously (mistakenly) pre-multiplied g_GHz by
+    n01, double-counting the charge matrix element. That inflated the reference
+    chi to ~-483 kHz and only "agreed" with solver-quantum's *old* code, which
+    double-counted identically -- a shared-convention error invisible to a
+    two-way check. The QuTiP anchor below breaks that symmetry.
     """
+    qt = pytest.importorskip("qutip")
     _, quant, spectrum, dispersive = solved
     # Independent transmon levels + charge matrix elements (from scratch).
     evals, evecs = ref.cpb_eigensystem_hz(
         quant.Ej_GHz * 1e9, quant.Ec_GHz * 1e9, ng=0.0, ncut=50
     )
-    levels_hz = evals[:6] - evals[0]
-    n_matrix = ref.number_operator_matrix(evecs, 50, 6)
+    n_levels = 6
+    levels_hz = evals[:n_levels] - evals[0]
+    n_matrix = ref.number_operator_matrix(evecs, 50, n_levels)
     n01 = abs(n_matrix[0, 1])
 
-    g01_hz = dispersive.g_GHz * 1e9 * n01  # convert bare-n coefficient -> physical g01
+    g01_hz = dispersive.g_GHz * 1e9  # g_GHz IS the complete physical g01 (no *n01)
     wr_hz = dispersive.f0_GHz * 1e9
-    chi_ref_hz = ref.dispersive_shift_multilevel_hz(levels_hz, n_matrix, g01_hz, wr_hz)
 
-    assert np.isclose(dispersive.chi_GHz * 1e9, chi_ref_hz, rtol=0.03)
+    # Reference 1: independent multilevel perturbation-theory formula.
+    chi_formula_hz = ref.dispersive_shift_multilevel_hz(
+        levels_hz, n_matrix, g01_hz, wr_hz
+    )
+
+    # Reference 2: from-scratch QuTiP exact diagonalization. Coefficient of the
+    # bare n operator is g_bare = g01/n01 so the 0-1 coupling equals g01.
+    n_fock = 25
+    g_bare_hz = g01_hz / n01
+    h_q = qt.Qobj(np.diag(levels_hz))
+    a = qt.destroy(n_fock)
+    h_r = wr_hz * a.dag() * a
+    coupling = g_bare_hz * qt.tensor(qt.Qobj(np.array(n_matrix)), a + a.dag())
+    h = qt.tensor(h_q, qt.qeye(n_fock)) + qt.tensor(qt.qeye(n_levels), h_r) + coupling
+    dressed_e, dressed_states = h.eigenstates()
+
+    def dressed(q_state: int, r_state: int) -> float:
+        bare = qt.tensor(qt.basis(n_levels, q_state), qt.basis(n_fock, r_state))
+        return dressed_e[
+            int(np.argmax([abs(bare.overlap(v)) ** 2 for v in dressed_states]))
+        ]
+
+    chi_qutip_hz = (
+        (dressed(1, 1) - dressed(1, 0)) - (dressed(0, 1) - dressed(0, 0))
+    ) / 2.0
+
+    chi_solver_hz = dispersive.chi_GHz * 1e9
+    # solver-quantum must agree with BOTH independent references.
+    assert np.isclose(chi_solver_hz, chi_formula_hz, rtol=0.03)
+    assert np.isclose(chi_solver_hz, chi_qutip_hz, rtol=0.03)
+    # The two references must also agree with each other (dispersive limit).
+    assert np.isclose(chi_formula_hz, chi_qutip_hz, rtol=0.02)
     # And we must genuinely be in the dispersive regime for chi to mean anything.
     assert abs(dispersive.g_GHz / dispersive.Delta_GHz) < 0.1
 
