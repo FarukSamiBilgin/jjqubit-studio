@@ -101,6 +101,11 @@ ELEMENT_TYPES: dict[str, ElementType] = {
         terminals=("a", "b"),
         params=(ParamSpec("L", "inductance"),),  # e.g. nH
     ),
+    "resistor": ElementType(
+        name="resistor",
+        terminals=("a", "b"),
+        params=(ParamSpec("R", "resistance"),),  # e.g. ohm; used for matched loads/ports
+    ),
     "resonator": ElementType(
         name="resonator",
         terminals=("a", "b"),
