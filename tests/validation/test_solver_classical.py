@@ -186,3 +186,109 @@ def test_classical_inductor_excluded_from_rcsj_and_disclosed(examples_dir, tmp_p
         note = f["assumptions"].attrs.get("rcsj_inductor_note", "")
     assert "L1" in inductor_ids                 # inductor detected at bias node
     assert "L1" in note and "not included" in note.lower()  # exclusion disclosed
+
+
+# ---------------------------------------------------------------------------
+# "Dead junction" guards
+# ---------------------------------------------------------------------------
+# V_dc ~= I*R in the underdamped running state is ALSO what a junction that was
+# silently dropped from the ODE would produce (a pure resistor gives V = I*R for
+# all I). So I*R agreement alone does NOT prove the Josephson element is in the
+# model. The three tests below break that degeneracy: each expected value depends
+# on Ic and/or the McCumber damping, so they can only pass if the junction is
+# genuinely present and its critical current genuinely enters the physics. All
+# expected values are computed here from analytic formulas, never read back from
+# the solver.
+#
+# Grounding:
+# * McCumber parameter beta_c = 2*pi*Ic*R^2*C / Phi0, and the damping quality
+#   factor Q = sqrt(beta_c) (Stewart 1968; McCumber 1968; Tinkham,
+#   *Introduction to Superconductivity* 2nd ed., sec. 6.3). beta_c >> 1 is
+#   underdamped/hysteretic, beta_c << 1 is overdamped.
+# * Underdamped running state: V ~= I*R (the DC supercurrent averages to zero).
+# * Overdamped (RSJ) running state at T=0: V = R*sqrt(I^2 - Ic^2) for I > Ic
+#   (Ambegaokar & Halperin 1969; Tinkham eq. 6.29). This value depends on Ic and
+#   is the sharpest discriminator against a dead junction.
+
+
+def _mccumber_beta_c(critical_current_a: float, resistance_ohm: float, capacitance_f: float) -> float:
+    """McCumber parameter beta_c = 2*pi*Ic*R^2*C / Phi0 (dimensionless).
+
+    Computed independently of the solver from the netlist's Ic, R, C. Phi0 is the
+    superconducting flux quantum (reference.PHI0 = h/2e).
+    """
+    return 2.0 * np.pi * critical_current_a * resistance_ohm**2 * capacitance_f / ref.PHI0
+
+
+@pytest.mark.parametrize(
+    "capacitance_f, regime",
+    [(53e-15, "underdamped"), (0.01e-15, "overdamped")],
+)
+def test_classical_damping_crossover_proves_junction_alive(capacitance_f, regime):
+    """Changing ONLY C flips the running-state law between I*R and R*sqrt(I^2-Ic^2).
+
+    Decisive dead-junction guard. Same Ic=20nA, R=8kohm, Ib=25nA; only C changes:
+      * underdamped (C=53 fF, beta_c ~= 206): V_dc ~= I*R = 200 uV.
+      * overdamped  (C=0.01 fF, beta_c ~= 0.039): V_dc ~= R*sqrt(I^2-Ic^2)
+        = 120 uV, and CLEARLY not I*R (200 uV).
+    A junction dropped from the ODE would give I*R in BOTH regimes (no Ic
+    dependence, no damping dependence), so the overdamped branch landing near
+    120 -- an Ic-dependent value -- can only happen if the junction is alive.
+
+    The R*sqrt(I^2-Ic^2) form is the T=0 overdamped/RSJ (Ambegaokar-Halperin)
+    limit; beta_c=0.039 is small but not exactly zero, so a few-percent tolerance
+    is used and the key assertion is that the value is near 120 and far from 200.
+    """
+    beta_c = _mccumber_beta_c(_IC_A, _R_OHM, capacitance_f)
+    i_bias = 25e-9
+    v = classical.dc_voltage(_IC_A, _R_OHM, capacitance_f, i_bias)
+    v_iR = i_bias * _R_OHM                                   # 200 uV
+    v_rsj = _R_OHM * np.sqrt(i_bias**2 - _IC_A**2)          # 120 uV
+
+    if regime == "underdamped":
+        assert beta_c > 100.0                                # genuinely underdamped
+        assert np.isclose(v, v_iR, rtol=0.01)
+    else:
+        assert beta_c < 0.1                                  # genuinely overdamped
+        assert np.isclose(v, v_rsj, rtol=0.05)               # ~R*sqrt(I^2-Ic^2)
+        # And unambiguously NOT the dead-junction / I*R value.
+        assert abs(v - v_iR) / v_iR > 0.25
+
+
+@pytest.mark.parametrize(
+    "ic_na, expect_zero",
+    [(30.0, True), (24.0, False), (20.0, False), (15.0, False)],
+)
+def test_classical_ic_threshold_proves_junction_alive(ic_na, expect_zero):
+    """With Ib=25nA fixed, changing Ic changes the result -> Ic is in the physics.
+
+    Ic > Ib (30 nA): the junction carries the whole bias as supercurrent, V_dc=0.
+    Ic <= Ib: the bias exceeds the critical current, the junction switches to the
+    running state, V_dc is finite (~I*R for this underdamped junction).
+    A dead junction would ignore Ic entirely and give ~I*R for every case, so the
+    Ic=30nA -> exactly-zero result is only possible with a live junction.
+    """
+    i_bias = 25e-9
+    v = classical.dc_voltage(ic_na * 1e-9, _R_OHM, _C_F, i_bias)
+    if expect_zero:
+        assert abs(v) < 1e-4 * _V_SCALE                      # Ic > Ib: blocked, V=0
+    else:
+        assert np.isclose(v, i_bias * _R_OHM, rtol=0.01)     # Ic < Ib: running, ~I*R
+
+
+def test_classical_reported_quality_factor_matches_sqrt_beta_c(examples_dir, tmp_path):
+    """The solver's reported /rcsj quality_factor equals sqrt(beta_c) from first principles.
+
+    Ties the solver's own reported damping figure to an independent McCumber
+    computation from the netlist's Ic, R, C (beta_c ~= 206 -> Q ~= 14.36). If the
+    junction (or its Ic/R/C) were not really in the model, this reported number
+    could not match the independently computed sqrt(beta_c).
+    """
+    h5py = pytest.importorskip("h5py")
+    out = tmp_path / "q.h5"
+    _run_cli(examples_dir / "rcsj_bias.json", out)
+    with h5py.File(out, "r") as f:
+        q_reported = float(f["rcsj"].attrs["quality_factor"])
+    q_expected = np.sqrt(_mccumber_beta_c(_IC_A, _R_OHM, _C_F))
+    assert np.isclose(q_reported, q_expected, rtol=1e-3)
+    assert q_expected > 1.0  # underdamped, matching the hysteresis seen elsewhere
