@@ -17,8 +17,8 @@ Responsibilities:
   :func:`load_project`.
 * Worker-thread scaffolding (:class:`SolverWorker`) so a long solver run never
   freezes the GUI thread. Solvers are registered in :data:`SOLVER_RUNNERS`;
-  only ``"quantum"`` (Task #3) is wired in today, ``"classical"`` (Task #2)
-  is added the same way once it reports done.
+  both ``"quantum"`` (Task #3) and ``"classical"`` (Task #2) are wired in,
+  each run as a subprocess (see :func:`_make_cli_solver_runner`).
 
 This module does no physics of its own: it only calls into ``core.netlist``
 and ``core.solvers.*`` and displays what comes back, per the GUI/core split
@@ -338,9 +338,9 @@ class SolverWorker(QThread):
     """Runs one solver backend on a background thread so the GUI never blocks.
 
     Deliberately generic: it dispatches to :data:`SOLVER_RUNNERS` by name
-    rather than hardcoding solver-specific logic, so wiring in
-    solver-classical later is a one-line registry addition, not a change to
-    this class or to :class:`MainWindow`'s threading logic.
+    rather than hardcoding solver-specific logic, so a future solver backend
+    is a one-line registry addition, not a change to this class or to
+    :class:`MainWindow`'s threading logic.
 
     Signals:
         progress(int, str): percent complete (0-100) and a short status
@@ -506,9 +506,10 @@ class MainWindow(QMainWindow):
         toolbar.addWidget(QLabel(" Solver: "))
 
         self.solver_combo = QComboBox()
-        # Both entries are listed even though only "quantum" is wired up yet
-        # (SOLVER_RUNNERS): picking "classical" fails cleanly through the same
-        # SolverWorker path once solver-classical is registered.
+        # Both are registered in SOLVER_RUNNERS (see gui/app.py module docs).
+        # solver-classical's numeric output is not yet cross-checked against
+        # tests/validation (its CLI interface is stable, its physics is
+        # still landing -- docs/task.md Görev 7), but the run mechanics work.
         self.solver_combo.addItems(["quantum", "classical"])
         toolbar.addWidget(self.solver_combo)
 
