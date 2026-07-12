@@ -28,6 +28,7 @@ in ``CLAUDE.md``.
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 import tempfile
 from dataclasses import dataclass
@@ -273,49 +274,44 @@ ProgressCallback = Callable[[int, str], None]
 SolverRunner = Callable[[str, str, ProgressCallback], None]
 
 
-def _run_quantum_solver(netlist_path: str, output_path: str, report: ProgressCallback) -> None:
-    """Run the quantum solver (Task #3) end to end via its public API.
+# Repository root, used to run solver CLIs as subprocesses with a known cwd.
+_REPO_ROOT = Path(__file__).resolve().parent.parent
 
-    Equivalent to ``python -m core.solvers.quantum <netlist_path> <output_path>``
-    (see :mod:`core.solvers.quantum.cli`), but calls the library functions
-    in-process (instead of shelling out) so real exceptions -- with their
-    messages -- propagate to :class:`SolverWorker` instead of being swallowed
-    behind a CLI exit code.
+
+def _run_quantum_solver(netlist_path: str, output_path: str, report: ProgressCallback) -> None:
+    """Run the quantum solver (Task #3) end to end via its CLI, as a subprocess.
+
+    Runs ``python -m core.solvers.quantum <netlist_path> <output_path>`` (see
+    :mod:`core.solvers.quantum.cli`) in a separate OS process rather than
+    importing scqubits/QuTiP in-process on this worker thread. This is
+    deliberate, not a stylistic choice: calling scqubits' sparse-eigensolver
+    path directly from a ``QThread`` was found to crash the whole app with a
+    Windows access violation (native BLAS/LAPACK code is not safe to run on
+    an arbitrary non-main OS thread inside the GUI process). Running it as a
+    subprocess isolates that native numerics from the GUI process entirely --
+    if the solver crashes, only the subprocess dies and the GUI can still
+    report a clean error.
 
     Raises:
-        core.netlist.NetlistError: bad or invalid netlist.
-        core.solvers.quantum.topology.TopologyError: unsupported circuit
-            topology (e.g. no single transmon + resonator found).
+        RuntimeError: if the subprocess exits with a non-zero code (message
+            includes its stderr/stdout) or does not produce the expected
+            output file.
     """
-    from core.netlist import load as load_netlist
-    from core.solvers.quantum import (
-        compute_dispersive_shift,
-        compute_transmon_spectrum,
-        quantize_circuit,
-        write_hdf5,
+    report(5, "Launching quantum solver subprocess...")
+    proc = subprocess.run(
+        [sys.executable, "-m", "core.solvers.quantum", str(netlist_path), str(output_path)],
+        cwd=str(_REPO_ROOT),
+        capture_output=True,
+        text=True,
     )
-
-    report(5, "Loading and validating netlist...")
-    netlist = load_netlist(netlist_path, validate=True)
-
-    report(20, "Quantizing circuit (Ej, Ec, g)...")
-    quantization = quantize_circuit(netlist)
-
-    report(50, "Diagonalizing transmon spectrum...")
-    spectrum = compute_transmon_spectrum(quantization.Ej_GHz, quantization.Ec_GHz)
-
-    report(75, "Computing dispersive shift (chi)...")
-    dispersive = compute_dispersive_shift(quantization, spectrum)
-
-    report(90, "Writing HDF5 result...")
-    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-    write_hdf5(
-        output_path,
-        netlist_name=netlist.name,
-        quantization=quantization,
-        spectrum=spectrum,
-        dispersive=dispersive,
-    )
+    report(90, "Quantum solver finished, checking result...")
+    if proc.returncode != 0:
+        detail = proc.stderr.strip() or proc.stdout.strip() or f"exit code {proc.returncode}"
+        raise RuntimeError(f"Quantum solver failed: {detail}")
+    if not Path(output_path).exists():
+        raise RuntimeError(
+            "Quantum solver reported success but did not produce an output file."
+        )
     report(100, "Done.")
 
 
@@ -447,7 +443,15 @@ class MainWindow(QMainWindow):
 
         self.schematic = SchematicEditor()
         self.results_panel = _ResultPlaceholder()
+        # Two distinct edit paths need to mark the project dirty: structural
+        # changes (add/remove/wire/load an element) go through
+        # SchematicScene.model_changed, but parameter edits made through the
+        # property panel go directly to CanvasModel.set_param and are only
+        # observable via PropertyPanel.param_changed -- see
+        # gui/schematic/property_panel.py's docstring. Both must be wired up
+        # for "unsaved changes" tracking to be accurate.
         self.schematic.scene.model_changed.connect(self._mark_dirty)
+        self.schematic.properties.param_changed.connect(lambda *_args: self._mark_dirty())
 
         self._build_ui()
         self._update_title()
@@ -529,6 +533,20 @@ class MainWindow(QMainWindow):
         self.solver_combo.addItems(["quantum", "classical"])
         toolbar.addWidget(self.solver_combo)
 
+    def _load_netlist_onto_canvas(self, netlist: Netlist) -> None:
+        """Replace the canvas contents with ``netlist``.
+
+        ``SchematicScene.load_netlist`` rebuilds a fresh ``CanvasModel``, so
+        ``PropertyPanel`` (constructed once against the *original* model) must
+        be re-pointed at the new one too -- mirrors what
+        ``SchematicEditor.load_netlist_file`` does for the file-based path;
+        ``.jjq`` projects carry the netlist in-memory instead of on disk, so
+        this method exists to do the same two steps for that path.
+        """
+        self.schematic.scene.load_netlist(netlist)
+        self.schematic.properties.model = self.schematic.scene.model
+        self.schematic.properties.clear()
+
     # -- title / dirty tracking ----------------------------------------------
 
     def _mark_dirty(self) -> None:
@@ -570,7 +588,7 @@ class MainWindow(QMainWindow):
         if not self._confirm_discard_changes():
             return
         self.project = ProjectState(netlist=Netlist(name="Untitled"))
-        self.schematic.scene.load_netlist(self.project.netlist)
+        self._load_netlist_onto_canvas(self.project.netlist)
         self.current_path = None
         self._dirty = False
         self._update_title()
@@ -591,7 +609,7 @@ class MainWindow(QMainWindow):
             self._show_project_error("Failed to open project", exc)
             return
         self.project = state
-        self.schematic.scene.load_netlist(state.netlist)
+        self._load_netlist_onto_canvas(state.netlist)
         self.current_path = path
         self._dirty = False
         self._update_title()
