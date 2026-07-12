@@ -124,6 +124,13 @@ her birimi kabul eder.
 - Terminaller: `[a, b]`
 - Parametreler: `L` — indüktans (`inductance`, tipik `nH`)
 
+### `resistor` — direnç
+- Terminaller: `[a, b]`
+- Parametreler: `R` — direnç (`resistance`, tipik `ohm`)
+- Kullanım alanı: eşleşmiş yük / port sonlandırması (ör. bir besleme hattının
+  50 ohm ile sonlandırılması) ve kayıplı elemanlar. MVP eleman listesine bu
+  ihtiyaç nedeniyle sonradan eklendi (bkz. `docs/task.md` — lead onayı ile).
+
 ### `resonator` — topraklı LC rezonatör (yığılı/lumped)
 - Terminaller: `[a, b]`
 - Parametreler:
@@ -175,7 +182,8 @@ Denetlenen hata modları:
 
 > Not: Kopuk düğüm kuralı (madde 12) SPICE alışkanlığına uyar: her düğümün en az
 > iki terminali olmalıdır. Bu nedenle örnek devrelerdeki besleme hattı çıkışı bir
-> port yük kapasitesiyle sonlandırılır.
+> `resistor` (eşleşmiş 50 ohm yük) ile sonlandırılır — bir port kapasitörü DEĞİL,
+> çünkü S21 hesabı gerçek bir sonlandırma direnci gerektirir.
 
 ---
 
@@ -221,10 +229,12 @@ nl.terminals_on_node("q")  # -> o düğüme bağlı Connection listesi
 
 - **`examples/transmon_readout.json`** — bir transmon (junction + shunt
   kapasitör), okuma rezonatörüne kuplaj kapasitörüyle bağlı; rezonatör bir
-  iletim hattı (besleme hattı) üzerinden okunur. Düğümler: `gnd, q, r, fin,
-  fout`.
+  iletim hattı (besleme hattı) üzerinden okunur ve hat 50 ohm'luk bir
+  `resistor` ile (eşleşmiş yük olarak) sonlandırılır. Düğümler: `gnd, q, r,
+  fin, fout`.
 - **`examples/rcsj_bias.json`** — akımla sürülen bir RCSJ jonksiyonu
   (current_source + junction + shunt kapasitör + indüktör). Klasik I-V için.
 
-İki örnek birlikte yedi MVP eleman tipinin tamamını kapsar.
-```
+İki örnek birlikte sekiz MVP eleman tipinin (junction, capacitor, inductor,
+resistor, resonator, transmission_line, current_source, ground) tamamını
+kapsar.
