@@ -273,9 +273,11 @@ def sweep_iv_curve(
     capacitance_f: float,
     bias_currents_a: np.ndarray,
     *,
-    n_plasma_periods: float = 200.0,
-    n_points: int = 4000,
+    n_plasma_periods: float = 60.0,
+    n_points: int = 600,
     settle_fraction: float = 0.5,
+    rtol: float = 1e-6,
+    atol: float = 1e-8,
 ) -> IVCurveResult:
     """Sweep the DC bias current up then down, tracking hysteresis.
 
@@ -296,12 +298,16 @@ def sweep_iv_curve(
         bias_currents_a: Ascending, non-negative bias-current samples (A) to
             sweep up through and then back down through (in reverse order).
         n_plasma_periods: Integration span per point, in plasma periods. Kept
-            shorter than :func:`integrate_phase_dynamics`'s default since a
-            sweep integrates many points.
+            much shorter than :func:`integrate_phase_dynamics`'s default
+            since a sweep integrates many points (2x len(bias_currents_a)
+            calls); loosened ``rtol``/``atol`` below compensate for
+            precision, and only the settled DC average is used per point.
         n_points: Output time samples per point (only the settled average is
             kept, so this need not be large).
         settle_fraction: Fraction of each point's trace discarded as
             transient before averaging.
+        rtol, atol: Relative/absolute integration tolerances (looser than
+            :func:`integrate_phase_dynamics`'s defaults for sweep speed).
 
     Returns:
         The :class:`IVCurveResult`.
@@ -322,6 +328,8 @@ def sweep_iv_curve(
                 n_plasma_periods=n_plasma_periods,
                 n_points=n_points,
                 settle_fraction=settle_fraction,
+                rtol=rtol,
+                atol=atol,
             )
             voltages[i] = result.dc_voltage_v
             phi = float(result.phase_rad[-1])
