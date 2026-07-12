@@ -1,7 +1,14 @@
 """Shared netlist builders for the quantum-solver test-suite.
 
 Mirrors the convention in ``tests/netlist/helpers.py`` (plain module,
-imported directly by test files -- not fixtures).
+imported directly by test files -- not fixtures). Named ``quantum_helpers``
+rather than ``helpers`` because neither ``tests/netlist/`` nor
+``tests/solvers_quantum/`` has an ``__init__.py``: pytest's default
+(non-package) import mode registers both under the top-level module name
+``helpers``, and whichever loads first wins for the whole test session --
+running the full repo suite together would otherwise silently import the
+wrong one. Renaming avoids the collision without touching
+``tests/netlist/`` (owned by netlist-core).
 """
 from __future__ import annotations
 

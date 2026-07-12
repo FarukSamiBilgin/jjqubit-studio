@@ -19,7 +19,10 @@ agreed directly between the producing and consuming teammates)::
       attrs: f0_GHz, Q, kappa_GHz, resonator_id, active_node
 
     /coupling  (group)
-      attrs: g_GHz, chi_GHz, Delta_GHz, beta, Cg_fF
+      attrs: g_GHz (the PHYSICAL 0<->1 vacuum Rabi coupling -- see
+             g_GHz_description attr and core/solvers/quantum/dispersive.py
+             for why this differs from the "bare" coefficient used
+             internally), g_GHz_description, chi_GHz, Delta_GHz, beta, Cg_fF
 
     /assumptions  (group)
       attrs: resonator_Z0_ohm, note (free-text explanation, see dispersive.py)
@@ -102,6 +105,13 @@ def write_hdf5(
 
         coupling_group = f.create_group("coupling")
         coupling_group.attrs["g_GHz"] = dispersive.g_GHz
+        coupling_group.attrs["g_GHz_description"] = (
+            "Physical qubit-resonator vacuum Rabi coupling for the 0<->1 "
+            "transition, g_01 = 2*e*beta*<0|n|1>*delta_V0/h (NOT the bare "
+            "coefficient of the qubit charge operator used internally for "
+            "the multi-level chi diagonalization -- see "
+            "core/solvers/quantum/dispersive.py)."
+        )
         coupling_group.attrs["chi_GHz"] = dispersive.chi_GHz
         coupling_group.attrs["Delta_GHz"] = dispersive.Delta_GHz
         coupling_group.attrs["beta"] = dispersive.beta

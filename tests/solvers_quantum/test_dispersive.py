@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import math
 
+import numpy as np
 import pytest
 import scqubits as scq
 
@@ -41,7 +42,7 @@ from core.solvers.quantum.dispersive import (
 )
 from core.solvers.quantum.quantization import quantize_circuit
 from core.solvers.quantum.spectrum import compute_transmon_spectrum
-from helpers import make_transmon_resonator_netlist
+from quantum_helpers import make_transmon_resonator_netlist
 
 
 def _two_level_analytic_chi(g_eff_ghz: float, omega_q_ghz: float, omega_r_ghz: float) -> float:
@@ -118,6 +119,114 @@ class TestMultilevelConvergenceAndScaling:
         transmon = scq.Transmon(EJ=14.9, EC=0.2515, ng=0.0, ncut=40, truncated_dim=6)
         oscillator = scq.Oscillator(E_osc=7.2, truncated_dim=6)
         assert dressed_chi_ghz(transmon, oscillator, 0.0) == pytest.approx(0.0, abs=1e-12)
+
+
+class TestIndependentQuTiPCrossCheck:
+    """Cross-check scqubits.HilbertSpace's chi against a from-scratch QuTiP
+    diagonalization of the SAME physical multi-level model (same transmon
+    eigenenergies and charge-matrix elements from scqubits, but composed and
+    diagonalized entirely with QuTiP's own tensor/eigenstates machinery,
+    independent of scqubits' HilbertSpace/add_interaction/generate_lookup
+    code path). Both mandated libraries (CLAUDE.md's tech stack) agreeing to
+    numerical precision on the full multi-level reference example is strong
+    evidence the production dispersive.py pipeline has no library-specific
+    bug -- this is not just self-consistency, it is agreement between two
+    independent implementations of the same physics.
+    """
+
+    def test_qutip_diagonalization_matches_scqubits_hilbertspace(self, transmon_netlist):
+        import qutip as qt
+
+        quantization = quantize_circuit(transmon_netlist)
+        spectrum = compute_transmon_spectrum(quantization.Ej_GHz, quantization.Ec_GHz)
+        result = compute_dispersive_shift(quantization, spectrum)
+
+        n_levels = len(spectrum.energy_levels_GHz)
+        n_osc = 6
+        levels = spectrum.energy_levels_GHz
+        n_matrix = spectrum.transmon.n_operator(energy_esys=True)[:n_levels, :n_levels]
+        g_bare = result.g_GHz / spectrum.n01  # same bare coefficient dispersive.py feeds internally
+
+        h_qubit = qt.tensor(qt.Qobj(np.diag(levels)), qt.qeye(n_osc))
+        a = qt.tensor(qt.qeye(n_levels), qt.destroy(n_osc))
+        n_full = qt.tensor(qt.Qobj(n_matrix), qt.qeye(n_osc))
+        hamiltonian = h_qubit + result.f0_GHz * a.dag() * a + g_bare * n_full * (a + a.dag())
+
+        evals_full, evecs_full = hamiltonian.eigenstates()
+
+        def dressed_energy(qubit_level: int, photon_number: int) -> tuple[float, float]:
+            bare = qt.tensor(qt.basis(n_levels, qubit_level), qt.basis(n_osc, photon_number))
+            overlaps = [abs(bare.overlap(v)) ** 2 for v in evecs_full]
+            idx = int(np.argmax(overlaps))
+            return evals_full[idx], overlaps[idx]
+
+        e00, o00 = dressed_energy(0, 0)
+        e01, o01 = dressed_energy(0, 1)
+        e10, o10 = dressed_energy(1, 0)
+        e11, o11 = dressed_energy(1, 1)
+        # Every dressed state should be clearly, unambiguously identifiable
+        # with its bare product state (deep dispersive regime).
+        assert min(o00, o01, o10, o11) > 0.99
+
+        chi_qutip = ((e11 - e10) - (e01 - e00)) / 2.0
+        assert result.chi_GHz == pytest.approx(chi_qutip, rel=1e-6)
+
+
+class TestGDoesNotDoubleCountChargeMatrixElement:
+    """Regression test for a real bug caught in review (see team log): g_GHz
+    must be the COMPLETE physical g_01 = 2*e*beta*n01*delta_V0/h, and the
+    value fed internally to dressed_chi_ghz (which multiplies the FULL n
+    operator, itself carrying a factor of n01 for the 0<->1 transition) must
+    be g_01/n01 -- NOT g_01 itself, which would double-count n01 and inflate
+    the effective simulated coupling (and therefore chi) by a factor of n01
+    relative to the intended physical model.
+    """
+
+    def test_reported_g_matches_independent_krantz_formula(self, transmon_netlist):
+        import math
+
+        from scipy.constants import e as ELEMENTARY_CHARGE
+        from scipy.constants import h as PLANCK_H
+        from scipy.constants import hbar as HBAR
+
+        quantization = quantize_circuit(transmon_netlist)
+        spectrum = compute_transmon_spectrum(quantization.Ej_GHz, quantization.Ec_GHz)
+        result = compute_dispersive_shift(quantization, spectrum)
+
+        beta = quantization.Cg_fF / quantization.C_sigma_fF
+        omega_r = 2.0 * math.pi * result.f0_GHz * 1e9
+        delta_v0 = omega_r * math.sqrt(HBAR * DEFAULT_RESONATOR_IMPEDANCE_OHM / math.pi)
+        g_01_reference = (
+            2.0 * ELEMENTARY_CHARGE * beta * spectrum.n01 * delta_v0 / PLANCK_H / 1e9
+        )
+        assert result.g_GHz == pytest.approx(g_01_reference, rel=1e-9)
+
+    def test_chi_matches_manual_diagonalization_with_bare_coefficient(self, transmon_netlist):
+        # Independently reproduce compute_dispersive_shift's chi by manually
+        # dividing out n01 before calling dressed_chi_ghz, and confirm it
+        # matches -- pinning down that the production code does the same.
+        quantization = quantize_circuit(transmon_netlist)
+        spectrum = compute_transmon_spectrum(quantization.Ej_GHz, quantization.Ec_GHz)
+        result = compute_dispersive_shift(quantization, spectrum)
+
+        g_bare = result.g_GHz / spectrum.n01
+        oscillator = scq.Oscillator(E_osc=result.f0_GHz, truncated_dim=6)
+        chi_manual = dressed_chi_ghz(spectrum.transmon, oscillator, g_bare)
+        assert result.chi_GHz == pytest.approx(chi_manual, rel=1e-9)
+
+    def test_using_g_as_bare_coefficient_would_have_inflated_chi(self, transmon_netlist):
+        # Demonstrates the bug this guards against: feeding g_GHz (physical,
+        # already includes n01) directly as the bare coefficient inflates
+        # the effective coupling and gives a measurably different (larger
+        # magnitude) chi than the correct calculation.
+        quantization = quantize_circuit(transmon_netlist)
+        spectrum = compute_transmon_spectrum(quantization.Ej_GHz, quantization.Ec_GHz)
+        result = compute_dispersive_shift(quantization, spectrum)
+
+        oscillator = scq.Oscillator(E_osc=result.f0_GHz, truncated_dim=6)
+        chi_if_buggy = dressed_chi_ghz(spectrum.transmon, oscillator, result.g_GHz)
+        assert abs(chi_if_buggy) > abs(result.chi_GHz)
+        assert chi_if_buggy != pytest.approx(result.chi_GHz, rel=1e-6)
 
 
 class TestComputeDispersiveShiftEndToEnd:

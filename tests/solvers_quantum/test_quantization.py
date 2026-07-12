@@ -19,7 +19,7 @@ from scipy.constants import h as PLANCK_H
 
 from core.solvers.quantum.quantization import quantize_circuit
 from core.solvers.quantum.topology import TopologyError
-from helpers import make_transmon_only_netlist, make_transmon_resonator_netlist
+from quantum_helpers import make_transmon_only_netlist, make_transmon_resonator_netlist
 
 FLUX_QUANTUM = PLANCK_H / (2.0 * ELEMENTARY_CHARGE)
 

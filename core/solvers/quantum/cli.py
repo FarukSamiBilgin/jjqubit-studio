@@ -37,7 +37,11 @@ def run(netlist_path: str, output_path: str) -> int:
     """
     try:
         netlist = load(netlist_path, validate=True)
-    except NetlistError as exc:
+    except (NetlistError, OSError) as exc:
+        # core.netlist.load() raises OSError subclasses (e.g. FileNotFoundError)
+        # directly for filesystem problems, and NetlistError subclasses for
+        # schema/unit/validation problems; both are "bad input", not a solver
+        # bug, so both should exit cleanly rather than propagate a traceback.
         print(f"error: failed to load netlist {netlist_path!r}: {exc}", file=sys.stderr)
         return 1
 

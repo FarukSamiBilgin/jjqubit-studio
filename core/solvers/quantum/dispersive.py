@@ -7,12 +7,32 @@ Standard circuit-QED capacitive coupling formula (Blais et al., PRA 69,
 Engineer's Guide to Superconducting Qubits", Appl. Phys. Rev. 6, 021318
 (2019), Eq. for g_{i,j})::
 
-    g = 2 * e * beta * <0|n|1> * delta_V0 / h        [[reported in GHz]]
+    g_01 = 2 * e * beta * <0|n|1> * delta_V0 / h       [[GHz]]
 
     beta       = Cg / C_sigma                         (capacitive divider ratio)
     delta_V0   = omega_r * sqrt(hbar * Z_r / pi)      (resonator zero-point
                                                         voltage fluctuation)
     <0|n|1>    = transmon charge matrix element (from scqubits, see spectrum.py)
+
+``g_01`` above is the COMPLETE, ready-to-use physical vacuum Rabi coupling
+for the 0<->1 transition -- this is what :data:`DispersiveResult.g_GHz`
+reports, and what any downstream consumer (waveform-ui, docs, other
+solvers) should read "g" as meaning.
+
+Internally, however, the non-perturbative chi calculation below drives the
+composite Hilbert space with the FULL (un-projected) transmon charge
+operator ``n`` -- not a 2-level sigma_01 -- because that operator's own
+matrix elements (n01, n12, ...) are what let the diagonalization see the
+real multi-level transmon physics. Since ``n``'s matrix element between
+levels 0 and 1 is already <0|n|1>, the coefficient multiplying the FULL
+operator must be the "bare" ``g_bare = 2*e*beta*delta_V0/h`` -- WITHOUT an
+extra factor of <0|n|1> -- so that the 0<->1 block of the resulting
+Hamiltonian reproduces ``g_01`` above exactly once. Multiplying by <0|n|1>
+twice (once by hand, once via the operator's own matrix element) would
+double-count it and inflate the effective coupling seen by the composite
+system by a factor of <0|n|1> (~14% for the bundled example) -- this
+solver computes ``g_bare`` internally and reports ``g_bare * n01 = g_01``
+as ``g_GHz``, precisely to avoid that trap.
 
 ASSUMPTION (approved by lead, see team log): the netlist's ``resonator``
 element only carries ``f0`` and ``Q`` (docs/netlist_schema.md section 3) --
@@ -84,9 +104,14 @@ class DispersiveResult:
     """Qubit-resonator coupling and dispersive shift, in GHz.
 
     Args:
-        g_GHz: Capacitive coupling strength g (frequency units, i.e. g/2pi
-            in the usual angular-frequency convention -- consistent with
-            scqubits' GHz-as-frequency convention used throughout).
+        g_GHz: The PHYSICAL qubit-resonator vacuum Rabi coupling for the
+            0<->1 transition, g_01 = 2*e*beta*<0|n|1>*delta_V0/h (frequency
+            units, i.e. g/2pi in the usual angular-frequency convention --
+            consistent with scqubits' GHz-as-frequency convention
+            throughout). This is the number to read as "the coupling
+            strength g" -- see module docstring for why the internal
+            diagonalization uses a different ("bare", n01-free)
+            coefficient and how the two relate.
         chi_GHz: Dispersive shift chi, computed non-perturbatively (see
             module docstring for the exact definition and sign convention).
         Delta_GHz: E01 - f0 (qubit-resonator detuning), for reference/HDF5.
@@ -149,20 +174,27 @@ def dressed_chi_ghz(
     return ((e11 - e10) - (e01 - e00)) / 2.0
 
 
-def _coupling_strength_ghz(
+def _coupling_strengths_ghz(
     quantization: QubitQuantization, spectrum: TransmonSpectrum, f0_ghz: float, z_r_ohm: float
-) -> tuple[float, float]:
-    """Return (g_GHz, beta) via the Blais/Koch/Krantz capacitive-coupling formula."""
+) -> tuple[float, float, float]:
+    """Return (g_bare_GHz, g_01_GHz, beta) via the Blais/Koch/Krantz formula.
+
+    ``g_bare`` is the coefficient of the FULL charge operator (feed this to
+    :func:`dressed_chi_ghz`); ``g_01 = g_bare * <0|n|1>`` is the complete
+    physical coupling (report this as :attr:`DispersiveResult.g_GHz`). See
+    the module docstring for why these are NOT the same number.
+    """
     beta = quantization.Cg_fF / quantization.C_sigma_fF if quantization.C_sigma_fF > 0 else 0.0
     if beta == 0.0:
-        return 0.0, 0.0
+        return 0.0, 0.0, 0.0
 
     omega_r = 2.0 * math.pi * f0_ghz * 1e9  # rad/s
     delta_v0 = omega_r * math.sqrt(_HBAR * z_r_ohm / math.pi)  # Volts (zero-point fluctuation)
 
-    g_joules = 2.0 * _ELEMENTARY_CHARGE * beta * spectrum.n01 * delta_v0
-    g_ghz = (g_joules / _PLANCK_H) / 1e9
-    return g_ghz, beta
+    g_bare_joules = 2.0 * _ELEMENTARY_CHARGE * beta * delta_v0  # NO n01 factor here (see above)
+    g_bare_ghz = (g_bare_joules / _PLANCK_H) / 1e9
+    g_01_ghz = g_bare_ghz * spectrum.n01
+    return g_bare_ghz, g_01_ghz, beta
 
 
 def compute_dispersive_shift(
@@ -192,10 +224,12 @@ def compute_dispersive_shift(
     q_factor = quantization.resonator_topology.resonator.params["Q"].to_si()
     kappa_ghz = f0_ghz / q_factor
 
-    g_ghz, beta = _coupling_strength_ghz(quantization, spectrum, f0_ghz, resonator_impedance_ohm)
+    g_bare_ghz, g_01_ghz, beta = _coupling_strengths_ghz(
+        quantization, spectrum, f0_ghz, resonator_impedance_ohm
+    )
     delta_ghz = spectrum.E01_GHz - f0_ghz
 
-    if g_ghz == 0.0:
+    if g_bare_ghz == 0.0:
         return DispersiveResult(
             g_GHz=0.0,
             chi_GHz=0.0,
@@ -206,11 +240,14 @@ def compute_dispersive_shift(
             kappa_GHz=kappa_ghz,
         )
 
+    # NOTE: dressed_chi_ghz takes the BARE coefficient (of the full n
+    # operator), not g_01 -- see module docstring. Passing g_01 here would
+    # double-count <0|n|1> and inflate the effective simulated coupling.
     oscillator = scq.Oscillator(E_osc=f0_ghz, truncated_dim=_OSCILLATOR_TRUNCATED_DIM)
-    chi_ghz = dressed_chi_ghz(spectrum.transmon, oscillator, g_ghz)
+    chi_ghz = dressed_chi_ghz(spectrum.transmon, oscillator, g_bare_ghz)
 
     return DispersiveResult(
-        g_GHz=g_ghz,
+        g_GHz=g_01_ghz,
         chi_GHz=chi_ghz,
         Delta_GHz=delta_ghz,
         beta=beta,

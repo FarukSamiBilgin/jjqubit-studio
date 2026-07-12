@@ -10,7 +10,7 @@ from __future__ import annotations
 import pytest
 
 from core.netlist import Connection, Element, Netlist, Quantity
-from helpers import make_transmon_only_netlist, make_transmon_resonator_netlist
+from quantum_helpers import make_transmon_only_netlist, make_transmon_resonator_netlist
 from core.solvers.quantum.topology import (
     TopologyError,
     extract_coupling_topology,
