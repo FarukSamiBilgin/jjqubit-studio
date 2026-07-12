@@ -4,12 +4,13 @@ Two layers are covered:
 
 1. The threading mechanism itself is generic -- exercised with a fake runner
    registered on the fly, independent of any real solver.
-2. The "quantum" backend actually registered in ``SOLVER_RUNNERS`` is run end
-   to end against the real solver-quantum package (Task #3, done). It shells
-   out to the CLI (``python -m core.solvers.quantum``) rather than importing
-   scqubits/QuTiP in-process -- see ``_run_quantum_solver``'s docstring in
-   ``gui/app.py`` for why (a QThread + in-process scqubits call crashed with
-   a Windows access violation during development of this module).
+2. Both real backends registered in ``SOLVER_RUNNERS`` ("quantum" from Task
+   #3, "classical" from Task #2) are run end to end against their real
+   packages. Both shell out to their CLI (``python -m core.solvers.<name>``)
+   rather than importing scqubits/QuTiP in-process -- see
+   ``_make_cli_solver_runner``'s docstring in ``gui/app.py`` for why (a
+   QThread + in-process scqubits call crashed with a Windows access
+   violation during development of this module).
 
 Cross-thread Qt signals use queued connections, which only get dispatched
 when the receiving thread's event loop runs; ``worker.wait()`` blocks until
@@ -160,3 +161,32 @@ def test_quantum_runner_reports_invalid_netlist_as_failure(qapp, tmp_path):
     assert succeeded == []
     assert len(failed) == 1
     assert "quantum solver failed" in failed[0].lower()
+
+
+# -- real "classical" backend integration (Task #2) ------------------------------
+
+
+def test_classical_runner_is_registered():
+    assert "classical" in SOLVER_RUNNERS
+
+
+def test_classical_runner_end_to_end_succeeds(qapp, tmp_path):
+    out_path = tmp_path / "result.h5"
+    worker = SolverWorker(
+        "classical", str(EXAMPLES_DIR / "rcsj_bias.json"), str(out_path)
+    )
+    succeeded: list[str] = []
+    failed: list[str] = []
+    worker.succeeded.connect(succeeded.append)
+    worker.failed.connect(failed.append)
+
+    worker.start()
+    _drain(qapp, worker)
+
+    assert failed == []
+    assert succeeded == [str(out_path)]
+    assert out_path.exists()
+
+    with h5py.File(out_path, "r") as f:
+        assert f.attrs["generated_by"] == "core.solvers.classical"
+        assert "rcsj" in f

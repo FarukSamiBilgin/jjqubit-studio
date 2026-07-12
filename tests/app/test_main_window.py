@@ -169,7 +169,48 @@ def test_run_solver_success_populates_results_panel(qapp):
     assert window.project.last_run.status == "success"
     assert window.project.last_run.solver == "quantum"
     assert pathlib.Path(window.project.last_run.output_path).exists()
-    assert "Result ready" in window.results_panel._label.text()
+    # The result was handed to the real waveform viewer and displayed as a
+    # quantum (energy-level) result, not left on its "no file" placeholder.
+    assert window.results_panel.stack.currentWidget() is window.results_panel.energy_level_view
+    assert window.results_panel.file_label.text() == window.project.last_run.output_path
+
+
+def test_run_solver_classical_backend_produces_a_result(qapp, monkeypatch):
+    """The "classical" entry in SOLVER_RUNNERS (Task #2's CLI) actually runs.
+
+    solver-classical's HDF5 layout is not guaranteed to be recognized by
+    today's waveform-ui detector yet (a known, communicated gap -- see
+    gui/app.py's SOLVER_RUNNERS comment), so this only asserts the run
+    itself succeeds and produces a real result file; it tolerates (but does
+    not require) a "could not be displayed" warning from the viewer.
+    """
+    import h5py
+
+    window = MainWindow()
+    netlist = load(str(EXAMPLES_DIR / "rcsj_bias.json"), validate=True)
+    window._load_netlist_onto_canvas(netlist)
+    window.solver_combo.setCurrentText("classical")
+
+    warnings: list[str] = []
+    monkeypatch.setattr(
+        QMessageBox,
+        "warning",
+        staticmethod(lambda parent, title, text, *a, **k: warnings.append(text) or QMessageBox.Ok),
+    )
+
+    window.run_solver()
+    assert window._worker is not None
+    assert window._worker.wait(30_000)
+    for _ in range(5):
+        qapp.processEvents()
+
+    assert window.project.last_run is not None
+    assert window.project.last_run.status == "success"
+    assert window.project.last_run.solver == "classical"
+    out_path = pathlib.Path(window.project.last_run.output_path)
+    assert out_path.exists()
+    with h5py.File(out_path, "r") as f:
+        assert f.attrs["generated_by"] == "core.solvers.classical"
 
 
 def test_run_solver_failure_recorded_in_last_run(qapp, monkeypatch):

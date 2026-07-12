@@ -11,8 +11,7 @@ pieces together, per the netlist contract in ``docs/task.md`` / ``CLAUDE.md``::
 Responsibilities:
 
 * The main window: menu, toolbar, embedded :class:`~gui.schematic.SchematicEditor`
-  canvas, and a results panel (a placeholder until ``waveform-ui``/Task #5
-  lands -- see :class:`_ResultPlaceholder`).
+  canvas, and an embedded :class:`~gui.waveform.WaveformViewer` results panel.
 * ``.jjq`` project files: netlist JSON (via :mod:`core.netlist`) plus a small
   metadata envelope (app version, last-run info). See :func:`save_project`,
   :func:`load_project`.
@@ -36,7 +35,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Optional
 
-from PySide6.QtCore import QObject, Qt, QThread, Signal
+from PySide6.QtCore import QObject, QThread, Signal
 from PySide6.QtGui import QAction, QCloseEvent
 from PySide6.QtWidgets import (
     QApplication,
@@ -49,8 +48,6 @@ from PySide6.QtWidgets import (
     QSplitter,
     QStatusBar,
     QToolBar,
-    QVBoxLayout,
-    QWidget,
 )
 
 from core.netlist import (
@@ -62,6 +59,7 @@ from core.netlist import (
     to_dict,
 )
 from gui.schematic import SchematicEditor
+from gui.waveform import WaveformViewer
 
 __all__ = [
     "APP_NAME",
@@ -278,49 +276,61 @@ SolverRunner = Callable[[str, str, ProgressCallback], None]
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
-def _run_quantum_solver(netlist_path: str, output_path: str, report: ProgressCallback) -> None:
-    """Run the quantum solver (Task #3) end to end via its CLI, as a subprocess.
+def _make_cli_solver_runner(module: str, display_name: str) -> SolverRunner:
+    """Build a :data:`SolverRunner` that shells out to a solver's CLI module.
 
-    Runs ``python -m core.solvers.quantum <netlist_path> <output_path>`` (see
-    :mod:`core.solvers.quantum.cli`) in a separate OS process rather than
-    importing scqubits/QuTiP in-process on this worker thread. This is
-    deliberate, not a stylistic choice: calling scqubits' sparse-eigensolver
-    path directly from a ``QThread`` was found to crash the whole app with a
-    Windows access violation (native BLAS/LAPACK code is not safe to run on
-    an arbitrary non-main OS thread inside the GUI process). Running it as a
-    subprocess isolates that native numerics from the GUI process entirely --
-    if the solver crashes, only the subprocess dies and the GUI can still
-    report a clean error.
+    Every ``core.solvers.*`` backend exposes the same headless entry point --
+    ``python -m <module> <netlist.json> <output.h5>`` -- so one factory covers
+    all of them. Running as a subprocess (rather than importing the solver's
+    Python API in-process on the worker thread) is deliberate, not a
+    stylistic choice: calling scqubits' sparse-eigensolver path directly from
+    a ``QThread`` was found to crash the whole app with a Windows access
+    violation (native BLAS/LAPACK code is not safe to invoke from an
+    arbitrary non-main OS thread inside the GUI process). Shelling out
+    isolates each solver's native numerics from the GUI process entirely --
+    if a solver crashes, only its subprocess dies and the GUI can still
+    report a clean error. Keep this isolation boundary for every solver
+    added here, not just quantum.
 
-    Raises:
-        RuntimeError: if the subprocess exits with a non-zero code (message
-            includes its stderr/stdout) or does not produce the expected
-            output file.
+    Args:
+        module: Dotted module path, e.g. ``"core.solvers.quantum"``.
+        display_name: Human-readable name for error messages, e.g. ``"Quantum solver"``.
+
+    Returns:
+        A runner suitable for registration in :data:`SOLVER_RUNNERS`.
     """
-    report(5, "Launching quantum solver subprocess...")
-    proc = subprocess.run(
-        [sys.executable, "-m", "core.solvers.quantum", str(netlist_path), str(output_path)],
-        cwd=str(_REPO_ROOT),
-        capture_output=True,
-        text=True,
-    )
-    report(90, "Quantum solver finished, checking result...")
-    if proc.returncode != 0:
-        detail = proc.stderr.strip() or proc.stdout.strip() or f"exit code {proc.returncode}"
-        raise RuntimeError(f"Quantum solver failed: {detail}")
-    if not Path(output_path).exists():
-        raise RuntimeError(
-            "Quantum solver reported success but did not produce an output file."
+
+    def _run(netlist_path: str, output_path: str, report: ProgressCallback) -> None:
+        report(5, f"Launching {display_name} subprocess...")
+        proc = subprocess.run(
+            [sys.executable, "-m", module, str(netlist_path), str(output_path)],
+            cwd=str(_REPO_ROOT),
+            capture_output=True,
+            text=True,
         )
-    report(100, "Done.")
+        report(90, f"{display_name} finished, checking result...")
+        if proc.returncode != 0:
+            detail = proc.stderr.strip() or proc.stdout.strip() or f"exit code {proc.returncode}"
+            raise RuntimeError(f"{display_name} failed: {detail}")
+        if not Path(output_path).exists():
+            raise RuntimeError(
+                f"{display_name} reported success but did not produce an output file."
+            )
+        report(100, "Done.")
+
+    return _run
 
 
 # Registry of available solver backends, keyed by the name shown in the "Run"
-# solver selector / recorded in LastRunInfo.solver. solver-classical (Task #2)
-# is added the same way once it reports done via `main` -- nothing else in
-# this module needs to change.
+# solver selector / recorded in LastRunInfo.solver. Both backends share the
+# CLI-subprocess entry point (netlist path in, HDF5 path out) -- see
+# _make_cli_solver_runner. Note: solver-classical's numeric output has not
+# been cross-checked against tests/validation yet as of this writing (its CLI
+# interface is stable, its physics is still landing) -- see docs/task.md
+# Görev 7.
 SOLVER_RUNNERS: dict[str, SolverRunner] = {
-    "quantum": _run_quantum_solver,
+    "quantum": _make_cli_solver_runner("core.solvers.quantum", "Quantum solver"),
+    "classical": _make_cli_solver_runner("core.solvers.classical", "Classical solver"),
 }
 
 
@@ -390,46 +400,15 @@ def _utc_now_iso() -> str:
 # ---------------------------------------------------------------------------
 
 
-class _ResultPlaceholder(QWidget):
-    """Stand-in for the waveform viewer (Task #5) until it is embeddable.
-
-    Shows where the HDF5 result path lands after a successful run. Replace
-    :meth:`show_result` (and the widget itself, in
-    :meth:`MainWindow._build_ui`) with the real
-    ``gui.waveform`` viewer once waveform-ui reports done -- everything else
-    in :class:`MainWindow` talks to this panel only through
-    :meth:`show_result`, so the swap is localized to those two spots.
-    """
-
-    def __init__(self) -> None:
-        super().__init__()
-        self._label = QLabel(
-            "No result yet.\n\nBuild a circuit, click Run, and the HDF5 "
-            "result path will be shown here.\n\n"
-            "(Waveform viewer panel is a placeholder pending Task #5.)"
-        )
-        self._label.setAlignment(Qt.AlignCenter)
-        self._label.setWordWrap(True)
-        layout = QVBoxLayout(self)
-        layout.addWidget(self._label)
-
-    def show_result(self, output_path: str) -> None:
-        """Report that a solver run finished and produced ``output_path``."""
-        self._label.setText(
-            f"Result ready:\n{output_path}\n\n"
-            "(Waveform viewer panel is a placeholder pending Task #5 -- "
-            "once embedded, it will load and plot this HDF5 file directly.)"
-        )
-
-
 class MainWindow(QMainWindow):
     """JJQubit Studio's main window: menu, toolbar, canvas, and run orchestration.
 
     Embeds :class:`~gui.schematic.SchematicEditor` as the schematic canvas and
-    a placeholder results panel (see :class:`_ResultPlaceholder`) side by
-    side. "Run" builds a netlist from the canvas, validates it, and runs the
+    :class:`~gui.waveform.WaveformViewer` as the results panel side by side.
+    "Run" builds a netlist from the canvas, validates it, and runs the
     selected solver on a background thread (:class:`SolverWorker`) so the GUI
-    stays responsive.
+    stays responsive; the resulting HDF5 file is handed straight to the
+    waveform viewer.
     """
 
     def __init__(self) -> None:
@@ -442,7 +421,7 @@ class MainWindow(QMainWindow):
         self._worker: Optional[SolverWorker] = None
 
         self.schematic = SchematicEditor()
-        self.results_panel = _ResultPlaceholder()
+        self.results_panel = WaveformViewer()
         # Two distinct edit paths need to mark the project dirty: structural
         # changes (add/remove/wire/load an element) go through
         # SchematicScene.model_changed, but parameter edits made through the
@@ -721,6 +700,21 @@ class MainWindow(QMainWindow):
 
     def _on_run_succeeded(self, output_path: str) -> None:
         solver_name = self._worker.solver_name if self._worker is not None else ""
+        try:
+            self.results_panel.open_file(output_path)
+            display_message = f"Run complete: {output_path}"
+        except (ValueError, OSError, KeyError) as exc:
+            # The solver produced a result but the viewer could not display
+            # it (e.g. an HDF5 layout it does not yet recognize) -- the run
+            # itself still succeeded, so record it as such and surface the
+            # display problem separately rather than as a run failure.
+            display_message = f"Run complete: {output_path} (could not display result: {exc})"
+            QMessageBox.warning(
+                self,
+                "Result produced but could not be displayed",
+                f"The solver wrote:\n{output_path}\n\nbut the waveform viewer "
+                f"could not open it:\n{exc}",
+            )
         self.project.last_run = LastRunInfo(
             solver=solver_name,
             output_path=output_path,
@@ -728,8 +722,7 @@ class MainWindow(QMainWindow):
             message="Run completed.",
             timestamp=_utc_now_iso(),
         )
-        self.statusBar().showMessage(f"Run complete: {output_path}")
-        self.results_panel.show_result(output_path)
+        self.statusBar().showMessage(display_message)
 
     def _on_run_failed(self, message: str) -> None:
         solver_name = self._worker.solver_name if self._worker is not None else ""
