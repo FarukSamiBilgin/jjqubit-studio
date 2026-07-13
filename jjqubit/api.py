@@ -244,6 +244,33 @@ def solve_quantum(netlist: NetlistLike) -> QuantumSolution:
     )
 
 
+def solve_two_qubit(netlist: NetlistLike, *, evals_count: int = 6):
+    """Solve a two-capacitively-coupled-transmon netlist for its coupled spectrum.
+
+    Quantizes the two qubits and their coupling capacitor and diagonalizes the
+    joint system (see :mod:`core.solvers.quantum.multiqubit`).
+
+    Args:
+        netlist: A loaded :class:`core.netlist.Netlist`, or a path to a netlist
+            JSON file, describing two Josephson qubits bridged by a coupling
+            capacitor.
+        evals_count: Number of joint eigenvalues to return.
+
+    Returns:
+        A ``core.solvers.quantum.multiqubit.TwoTransmonResult`` (bare
+        frequencies, single-excitation splitting, exchange coupling J, and the
+        low-lying coupled levels).
+
+    Raises:
+        core.solvers.quantum.topology.TopologyError: if the netlist is not a
+            valid two-qubit coupled topology.
+    """
+    from core.solvers.quantum.multiqubit import solve_two_qubit_netlist
+
+    net = _as_netlist(netlist)
+    return solve_two_qubit_netlist(net, evals_count=evals_count)
+
+
 def solve_classical(netlist: NetlistLike) -> ClassicalSolution:
     """Run the classical RCSJ / I-V / phase-dynamics / readout-S21 analysis.
 

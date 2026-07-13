@@ -1,0 +1,140 @@
+{
+  "format": "jjqubit-netlist",
+  "version": "1.0",
+  "name": "Two coupled transmons",
+  "nodes": [
+    "gnd",
+    "q1",
+    "q2"
+  ],
+  "elements": [
+    {
+      "id": "J1",
+      "type": "junction",
+      "params": {
+        "Ic": {
+          "value": 30.0,
+          "unit": "nA"
+        },
+        "Cj": {
+          "value": 2.0,
+          "unit": "fF"
+        },
+        "Rn": {
+          "value": 10.0,
+          "unit": "kohm"
+        }
+      }
+    },
+    {
+      "id": "Cs1",
+      "type": "capacitor",
+      "params": {
+        "C": {
+          "value": 75.0,
+          "unit": "fF"
+        }
+      }
+    },
+    {
+      "id": "J2",
+      "type": "junction",
+      "params": {
+        "Ic": {
+          "value": 30.0,
+          "unit": "nA"
+        },
+        "Cj": {
+          "value": 2.0,
+          "unit": "fF"
+        },
+        "Rn": {
+          "value": 10.0,
+          "unit": "kohm"
+        }
+      }
+    },
+    {
+      "id": "Cs2",
+      "type": "capacitor",
+      "params": {
+        "C": {
+          "value": 75.0,
+          "unit": "fF"
+        }
+      }
+    },
+    {
+      "id": "Cc",
+      "type": "capacitor",
+      "params": {
+        "C": {
+          "value": 4.0,
+          "unit": "fF"
+        }
+      }
+    },
+    {
+      "id": "G",
+      "type": "ground",
+      "params": {}
+    }
+  ],
+  "connections": [
+    {
+      "element": "J1",
+      "terminal": 0,
+      "node": "q1"
+    },
+    {
+      "element": "J1",
+      "terminal": 1,
+      "node": "gnd"
+    },
+    {
+      "element": "Cs1",
+      "terminal": 0,
+      "node": "q1"
+    },
+    {
+      "element": "Cs1",
+      "terminal": 1,
+      "node": "gnd"
+    },
+    {
+      "element": "J2",
+      "terminal": 0,
+      "node": "q2"
+    },
+    {
+      "element": "J2",
+      "terminal": 1,
+      "node": "gnd"
+    },
+    {
+      "element": "Cs2",
+      "terminal": 0,
+      "node": "q2"
+    },
+    {
+      "element": "Cs2",
+      "terminal": 1,
+      "node": "gnd"
+    },
+    {
+      "element": "Cc",
+      "terminal": 0,
+      "node": "q1"
+    },
+    {
+      "element": "Cc",
+      "terminal": 1,
+      "node": "q2"
+    },
+    {
+      "element": "G",
+      "terminal": 0,
+      "node": "gnd"
+    }
+  ]
+}

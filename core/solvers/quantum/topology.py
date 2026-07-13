@@ -90,8 +90,105 @@ class CouplingTopology:
     capacitor_ids: tuple[str, ...]
 
 
+@dataclass(frozen=True)
+class TwoQubitTopology:
+    """Two Josephson qubits and their capacitive coupling, found in a netlist.
+
+    Args:
+        qubit_elements: The two ``junction``/``squid`` elements (order matches
+            the other per-qubit tuples).
+        island_nodes: Each qubit's charge-island node.
+        ground_node: The shared 0 V reference.
+        shunt_capacitor_ids: Per qubit, the ids of capacitors wired island<->
+            ground (contribute to that qubit's island-to-ground capacitance).
+        coupling_capacitor_ids: Ids of capacitors wired directly between the two
+            islands (the qubit-qubit coupling).
+    """
+
+    qubit_elements: tuple[Element, Element]
+    island_nodes: tuple[str, str]
+    ground_node: str
+    shunt_capacitor_ids: tuple[tuple[str, ...], tuple[str, ...]]
+    coupling_capacitor_ids: tuple[str, ...]
+
+
 def _elements_of_type(netlist: Netlist, element_type: str) -> list[Element]:
     return [el for el in netlist.elements if el.type == element_type]
+
+
+def _josephson_elements(netlist: Netlist) -> list[Element]:
+    """All qubit Josephson elements (junctions and squids), in netlist order."""
+    return [el for el in netlist.elements if el.type in ("junction", "squid")]
+
+
+def extract_two_qubit_topology(netlist: Netlist) -> TwoQubitTopology:
+    """Locate two capacitively-coupled qubits and their coupling capacitor(s).
+
+    Args:
+        netlist: A validated :class:`~core.netlist.Netlist` with exactly two
+            Josephson elements (junction/squid), each wired between the shared
+            ground and its own island, and at least one capacitor bridging the
+            two islands.
+
+    Returns:
+        The :class:`TwoQubitTopology`.
+
+    Raises:
+        TopologyError: if there are not exactly two Josephson elements, if an
+            element is not wired ground<->island, or if the two islands are the
+            same node.
+    """
+    qubits = _josephson_elements(netlist)
+    if len(qubits) != 2:
+        raise TopologyError(
+            f"two-qubit topology needs exactly 2 Josephson elements, found "
+            f"{len(qubits)} ({[q.id for q in qubits]})"
+        )
+    ground_node = _single_ground_node(netlist)
+
+    islands: list[str] = []
+    for q in qubits:
+        p_node, n_node = netlist.nodes_of(q.id)
+        if not p_node or not n_node:
+            raise TopologyError(f"{q.type} {q.id!r} has an unbound terminal")
+        non_ground = {p_node, n_node} - {ground_node}
+        if len(non_ground) != 1:
+            raise TopologyError(
+                f"{q.type} {q.id!r} is wired {p_node!r}<->{n_node!r}; expected one "
+                f"terminal on ground {ground_node!r} and one on its island"
+            )
+        islands.append(next(iter(non_ground)))
+
+    if islands[0] == islands[1]:
+        raise TopologyError(
+            f"both qubits share island node {islands[0]!r}; they must be distinct"
+        )
+
+    island_set = {islands[0], islands[1]}
+    coupling_ids: list[str] = []
+    shunt_ids: tuple[list[str], list[str]] = ([], [])
+    for cap in _elements_of_type(netlist, "capacitor"):
+        nodes = set(netlist.nodes_of(cap.id))
+        if nodes == island_set:
+            coupling_ids.append(cap.id)
+        else:
+            for i, island in enumerate(islands):
+                if nodes == {island, ground_node}:
+                    shunt_ids[i].append(cap.id)
+
+    if not coupling_ids:
+        raise TopologyError(
+            "no capacitor bridges the two qubit islands; the qubits are "
+            "uncoupled (nothing to solve as a coupled pair)"
+        )
+
+    return TwoQubitTopology(
+        qubit_elements=(qubits[0], qubits[1]),
+        island_nodes=(islands[0], islands[1]),
+        ground_node=ground_node,
+        shunt_capacitor_ids=(tuple(shunt_ids[0]), tuple(shunt_ids[1])),
+        coupling_capacitor_ids=tuple(coupling_ids),
+    )
 
 
 def _single_ground_node(netlist: Netlist) -> str:

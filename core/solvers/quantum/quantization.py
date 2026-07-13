@@ -83,6 +83,52 @@ def _optional_dimensionless(qubit_topology_element, name: str) -> float:
 
 
 @dataclass(frozen=True)
+class JosephsonParams:
+    """The Josephson energy of a single junction/squid element, in GHz.
+
+    ``Ej_GHz`` is the effective value (flux-tuned for a squid); ``EjMax_GHz``,
+    ``flux`` and ``asymmetry_d`` describe the tuning (trivial for a junction).
+    """
+
+    Ej_GHz: float
+    EjMax_GHz: float
+    flux: float
+    asymmetry_d: float
+    Ic_nA: float
+    element_type: str
+
+
+def element_josephson_params(element) -> JosephsonParams:
+    """Compute the (effective) Josephson energy of a junction or squid element.
+
+    Shared by the single- and multi-qubit quantization paths.
+    """
+    if element.type == "squid":
+        ic_max_si = element.params["Ic_max"].to_si()  # Amperes
+        flux = _optional_dimensionless(element, "flux")
+        asymmetry_d = _optional_dimensionless(element, "d")
+        ej_max = _ej_ghz_from_ic(ic_max_si)
+        return JosephsonParams(
+            Ej_GHz=ej_max * flux_tunable_ej_factor(flux, asymmetry_d),
+            EjMax_GHz=ej_max,
+            flux=flux,
+            asymmetry_d=asymmetry_d,
+            Ic_nA=ic_max_si * 1e9,
+            element_type="squid",
+        )
+    ic_si = element.params["Ic"].to_si()  # Amperes
+    ej = _ej_ghz_from_ic(ic_si)
+    return JosephsonParams(
+        Ej_GHz=ej,
+        EjMax_GHz=ej,
+        flux=0.0,
+        asymmetry_d=0.0,
+        Ic_nA=ic_si * 1e9,
+        element_type="junction",
+    )
+
+
+@dataclass(frozen=True)
 class QubitQuantization:
     """Quantized transmon parameters extracted from a netlist, in GHz/fF/nA.
 
@@ -169,23 +215,14 @@ def quantize_circuit(netlist: Netlist) -> QubitQuantization:
     coupling = extract_coupling_topology(netlist, qubit, resonator)
 
     element = qubit.junction
-    if element.type == "squid":
-        # Flux-tunable: EjMax from Ic_max, effective Ej scaled by the flux
-        # factor. At a fixed flux the spectrum is that of a plain transmon with
-        # Ej = Ej_eff, so the rest of the pipeline is unchanged.
-        ic_max_si = element.params["Ic_max"].to_si()  # Amperes
-        flux = _optional_dimensionless(element, "flux")
-        asymmetry_d = _optional_dimensionless(element, "d")
-        EjMax_GHz = _ej_ghz_from_ic(ic_max_si)
-        Ej_GHz = EjMax_GHz * flux_tunable_ej_factor(flux, asymmetry_d)
-        Ic_nA = ic_max_si * 1e9
-    else:
-        ic_si = element.params["Ic"].to_si()  # Amperes
-        Ej_GHz = _ej_ghz_from_ic(ic_si)
-        EjMax_GHz = Ej_GHz
-        flux = 0.0
-        asymmetry_d = 0.0
-        Ic_nA = ic_si * 1e9
+    # Effective Ej (flux-tuned for a squid). At a fixed flux the spectrum is
+    # that of a plain transmon with Ej = Ej_eff, so the pipeline is unchanged.
+    jp = element_josephson_params(element)
+    Ej_GHz = jp.Ej_GHz
+    EjMax_GHz = jp.EjMax_GHz
+    flux = jp.flux
+    asymmetry_d = jp.asymmetry_d
+    Ic_nA = jp.Ic_nA
 
     C_sigma_si = _total_capacitance_si(netlist, qubit)  # Farad
     Ec_si = _ELEMENTARY_CHARGE**2 / (2.0 * C_sigma_si)  # Joules

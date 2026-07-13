@@ -29,6 +29,12 @@ from dataclasses import dataclass
 
 import numpy as np
 import scqubits as scq
+from core.netlist import Netlist
+from scipy.constants import e as _ELEMENTARY_CHARGE
+from scipy.constants import h as _PLANCK_H
+
+from .quantization import element_josephson_params
+from .topology import TwoQubitTopology, extract_two_qubit_topology
 
 # Charge-basis truncation and per-transmon level truncation for the joint space.
 _NCUT = 30
@@ -58,6 +64,105 @@ class TwoTransmonResult:
     one_excitation_splitting_GHz: float
     g_GHz: float
     coupled_levels_GHz: np.ndarray
+
+
+@dataclass(frozen=True)
+class TwoQubitQuantization:
+    """Ej/Ec of two coupled qubits and their charge coupling, from a netlist.
+
+    Args:
+        Ej1_GHz, Ec1_GHz, Ej2_GHz, Ec2_GHz: Per-qubit Josephson/charging
+            energies, in GHz. Ec is the diagonal of the Maxwell charging-energy
+            matrix, so it already accounts for the coupling capacitor's small
+            renormalization of each island.
+        g_GHz: Coefficient of the charge-charge coupling ``g * n1 * n2``, in GHz,
+            derived from the off-diagonal charging energy (capacitance-matrix
+            inversion).
+        Cc_fF: Total island<->island coupling capacitance, in fF.
+        topology: The raw :class:`TwoQubitTopology` this was derived from.
+    """
+
+    Ej1_GHz: float
+    Ec1_GHz: float
+    Ej2_GHz: float
+    Ec2_GHz: float
+    g_GHz: float
+    Cc_fF: float
+    topology: TwoQubitTopology
+
+
+def _island_shunt_capacitance_si(
+    netlist: Netlist, element, shunt_cap_ids: tuple[str, ...]
+) -> float:
+    """Island-to-ground capacitance: the element's Cj plus its shunt capacitors."""
+    total = element.params["Cj"].to_si()
+    for cid in shunt_cap_ids:
+        cap = netlist.element_by_id(cid)
+        assert cap is not None
+        total += cap.params["C"].to_si()
+    return total
+
+
+def quantize_two_qubit_circuit(netlist: Netlist) -> TwoQubitQuantization:
+    """Extract Ej/Ec per qubit and the charge coupling g from a 2-qubit netlist.
+
+    The two islands and coupling capacitor form the Maxwell capacitance matrix
+    ``[[C1+Cc, -Cc], [-Cc, C2+Cc]]`` (C1, C2 the island-to-ground capacitances).
+    Its inverse gives the charging-energy matrix: ``Ec_i = e^2 (C^-1)_ii / 2``
+    on the diagonal and the coupling ``g = 4 e^2 (C^-1)_12`` off-diagonal
+    (coefficient of ``n1 n2``). This is a capacitance-matrix INVERSION of netlist
+    inputs, not a geometry solve (CLAUDE.md "Yapmayacaklarimiz" #1).
+
+    Raises:
+        core.solvers.quantum.topology.TopologyError: if the netlist is not a
+            valid two-qubit coupled topology.
+    """
+    topo = extract_two_qubit_topology(netlist)
+    q1, q2 = topo.qubit_elements
+
+    jp1 = element_josephson_params(q1)
+    jp2 = element_josephson_params(q2)
+
+    c1 = _island_shunt_capacitance_si(netlist, q1, topo.shunt_capacitor_ids[0])
+    c2 = _island_shunt_capacitance_si(netlist, q2, topo.shunt_capacitor_ids[1])
+    cc = 0.0
+    for cid in topo.coupling_capacitor_ids:
+        cap = netlist.element_by_id(cid)
+        assert cap is not None
+        cc += cap.params["C"].to_si()
+
+    c_matrix = np.array([[c1 + cc, -cc], [-cc, c2 + cc]])
+    c_inv = np.linalg.inv(c_matrix)
+    ec1 = _ELEMENTARY_CHARGE**2 * c_inv[0, 0] / 2.0 / _PLANCK_H / 1e9
+    ec2 = _ELEMENTARY_CHARGE**2 * c_inv[1, 1] / 2.0 / _PLANCK_H / 1e9
+    g = 4.0 * _ELEMENTARY_CHARGE**2 * c_inv[0, 1] / _PLANCK_H / 1e9
+
+    return TwoQubitQuantization(
+        Ej1_GHz=jp1.Ej_GHz,
+        Ec1_GHz=ec1,
+        Ej2_GHz=jp2.Ej_GHz,
+        Ec2_GHz=ec2,
+        g_GHz=g,
+        Cc_fF=cc * 1e15,
+        topology=topo,
+    )
+
+
+def solve_two_qubit_netlist(netlist: Netlist, *, evals_count: int = 6):
+    """Quantize a 2-qubit netlist and return its coupled spectrum.
+
+    Convenience that chains :func:`quantize_two_qubit_circuit` and
+    :func:`compute_two_transmon_spectrum`.
+    """
+    q = quantize_two_qubit_circuit(netlist)
+    return compute_two_transmon_spectrum(
+        q.Ej1_GHz,
+        q.Ec1_GHz,
+        q.Ej2_GHz,
+        q.Ec2_GHz,
+        q.g_GHz,
+        evals_count=evals_count,
+    )
 
 
 def _transmon(Ej_GHz: float, Ec_GHz: float) -> scq.Transmon:

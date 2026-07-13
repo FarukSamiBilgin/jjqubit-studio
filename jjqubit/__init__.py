@@ -32,6 +32,7 @@ from .api import (
     load_netlist,
     solve_classical,
     solve_quantum,
+    solve_two_qubit,
 )
 
 # Mirrors gui.app.APP_VERSION; kept here too so the headless API carries a
@@ -44,5 +45,6 @@ __all__ = [
     "load_netlist",
     "solve_classical",
     "solve_quantum",
+    "solve_two_qubit",
     "__version__",
 ]

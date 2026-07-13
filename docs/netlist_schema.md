@@ -250,6 +250,9 @@ nl.terminals_on_node("q")  # -> o düğüme bağlı Connection listesi
 - **`examples/tunable_transmon.json`** — `transmon_readout` ile aynı devre,
   ama sabit `junction` yerine akı-ayarlanabilir bir `squid` (flux=0.25). Akı
   süpürmesi için `examples/sweep_flux.py`'ye bakın.
+- **`examples/two_transmon.json`** — iki kapasitif-kuplajlı transmon (her biri
+  shunt kapasitörlü, aralarında bir kuplaj kapasitörü). Çoklu-qubit avoided
+  crossing / J için (`jjqubit.solve_two_qubit`).
 
 Örnekler birlikte dokuz eleman tipinin (junction, squid, capacitor, inductor,
 resistor, resonator, transmission_line, current_source, ground) tamamını

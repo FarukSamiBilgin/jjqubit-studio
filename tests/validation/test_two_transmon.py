@@ -16,9 +16,61 @@ checks pin that behavior against its analytic form
 from __future__ import annotations
 
 import pytest
-from core.solvers.quantum.multiqubit import compute_two_transmon_spectrum
+from core.netlist.model import Connection, Element, Netlist
+from core.netlist.units import Quantity
+from core.solvers.quantum.multiqubit import (
+    compute_two_transmon_spectrum,
+    quantize_two_qubit_circuit,
+    solve_two_qubit_netlist,
+)
+from core.solvers.quantum.topology import TopologyError
 
 EC = 0.25
+
+
+def _two_qubit_netlist(*, Ic1=30.0, Ic2=30.0, Cc_fF=4.0, Cs_fF=75.0):
+    """Two junctions, each shunted to ground, bridged by a coupling capacitor."""
+    return Netlist(
+        name="two coupled transmons",
+        nodes=["gnd", "q1", "q2"],
+        elements=[
+            Element(
+                "J1",
+                "junction",
+                {
+                    "Ic": Quantity(Ic1, "nA"),
+                    "Cj": Quantity(2.0, "fF"),
+                    "Rn": Quantity(10.0, "kohm"),
+                },
+            ),
+            Element("Cs1", "capacitor", {"C": Quantity(Cs_fF, "fF")}),
+            Element(
+                "J2",
+                "junction",
+                {
+                    "Ic": Quantity(Ic2, "nA"),
+                    "Cj": Quantity(2.0, "fF"),
+                    "Rn": Quantity(10.0, "kohm"),
+                },
+            ),
+            Element("Cs2", "capacitor", {"C": Quantity(Cs_fF, "fF")}),
+            Element("Cc", "capacitor", {"C": Quantity(Cc_fF, "fF")}),
+            Element("G", "ground", {}),
+        ],
+        connections=[
+            Connection("J1", 0, "q1"),
+            Connection("J1", 1, "gnd"),
+            Connection("Cs1", 0, "q1"),
+            Connection("Cs1", 1, "gnd"),
+            Connection("J2", 0, "q2"),
+            Connection("J2", 1, "gnd"),
+            Connection("Cs2", 0, "q2"),
+            Connection("Cs2", 1, "gnd"),
+            Connection("Cc", 0, "q1"),
+            Connection("Cc", 1, "q2"),
+            Connection("G", 0, "gnd"),
+        ],
+    )
 
 
 class TestAvoidedCrossing:
@@ -82,3 +134,58 @@ class TestApiContract:
     def test_ground_level_is_zero(self):
         r = compute_two_transmon_spectrum(15.0, EC, 15.0, EC, g_GHz=0.02)
         assert r.coupled_levels_GHz[0] == pytest.approx(0.0, abs=1e-9)
+
+
+class TestTwoQubitNetlistQuantization:
+    def test_decoupled_limit_recovers_single_qubit_ec_and_zero_g(self):
+        # Cc -> 0: g -> 0, and each Ec matches an isolated island (Cj + Cs).
+        from scipy.constants import e, h
+
+        q = quantize_two_qubit_circuit(_two_qubit_netlist(Cc_fF=1e-6))
+        c_island_f = (2.0 + 75.0) * 1e-15
+        ec_single = e**2 / (2.0 * c_island_f) / h / 1e9
+        assert q.Ec1_GHz == pytest.approx(ec_single, rel=1e-4)
+        assert q.Ec2_GHz == pytest.approx(ec_single, rel=1e-4)
+        assert q.g_GHz == pytest.approx(0.0, abs=1e-4)
+
+    def test_coupling_g_matches_capacitance_matrix_formula(self):
+        # g = 4 e^2 (C^-1)_12 / h, with C = [[C1+Cc,-Cc],[-Cc,C2+Cc]].
+        import numpy as np
+        from scipy.constants import e, h
+
+        q = quantize_two_qubit_circuit(_two_qubit_netlist(Cc_fF=4.0))
+        c_island = (2.0 + 75.0) * 1e-15
+        cc = 4.0e-15
+        cmat = np.array([[c_island + cc, -cc], [-cc, c_island + cc]])
+        expected_g = 4.0 * e**2 * np.linalg.inv(cmat)[0, 1] / h / 1e9
+        assert q.g_GHz == pytest.approx(expected_g, rel=1e-9)
+        assert q.Cc_fF == pytest.approx(4.0, rel=1e-9)
+
+    def test_identical_qubits_have_equal_energies(self):
+        q = quantize_two_qubit_circuit(_two_qubit_netlist(Ic1=30.0, Ic2=30.0))
+        assert q.Ej1_GHz == pytest.approx(q.Ej2_GHz)
+        assert q.Ec1_GHz == pytest.approx(q.Ec2_GHz)
+
+    def test_resonant_pair_shows_avoided_crossing_from_netlist(self):
+        r = solve_two_qubit_netlist(_two_qubit_netlist(Ic1=30.0, Ic2=30.0))
+        assert r.detuning_GHz == pytest.approx(0.0, abs=1e-6)
+        assert r.one_excitation_splitting_GHz == pytest.approx(2.0 * r.J_GHz, rel=1e-6)
+        assert r.J_GHz > 0.0
+
+
+class TestTwoQubitTopologyErrors:
+    def test_single_qubit_rejected(self):
+        net = _two_qubit_netlist()
+        # Drop J2 and its wiring -> only one Josephson element.
+        net.elements = [el for el in net.elements if el.id != "J2"]
+        net.connections = [c for c in net.connections if c.element != "J2"]
+        with pytest.raises(TopologyError, match="exactly 2 Josephson"):
+            quantize_two_qubit_circuit(net)
+
+    def test_uncoupled_pair_rejected(self):
+        net = _two_qubit_netlist()
+        # Remove the coupling capacitor.
+        net.elements = [el for el in net.elements if el.id != "Cc"]
+        net.connections = [c for c in net.connections if c.element != "Cc"]
+        with pytest.raises(TopologyError, match="bridges the two qubit islands"):
+            quantize_two_qubit_circuit(net)
