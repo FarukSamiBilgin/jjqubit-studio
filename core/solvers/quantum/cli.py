@@ -52,7 +52,7 @@ def run(netlist_path: str, output_path: str) -> int:
         quantization = quantize_circuit(netlist)
         spectrum = compute_transmon_spectrum(quantization.Ej_GHz, quantization.Ec_GHz)
         dispersive = compute_dispersive_shift(quantization, spectrum)
-        coherence = compute_coherence(quantization)
+        coherence = compute_coherence(quantization, dispersive=dispersive)
     except TopologyError as exc:
         print(f"error: unsupported netlist topology: {exc}", file=sys.stderr)
         return 1

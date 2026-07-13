@@ -9,14 +9,20 @@ guard the API surface.
 
 from __future__ import annotations
 
+import pathlib
 import subprocess
 import sys
 
 import jjqubit
 import pytest
-from conftest import EXAMPLES_DIR, REPO_ROOT
 from core.netlist import Netlist
 from core.netlist.model import Connection, Element
+
+# Self-contained paths (not `from conftest import ...`): several test dirs have
+# a top-level conftest.py, and with no __init__.py the bare `conftest` module
+# name can bind to the wrong one depending on collection order.
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
+EXAMPLES_DIR = REPO_ROOT / "examples"
 
 TRANSMON = str(EXAMPLES_DIR / "transmon_readout.json")
 RCSJ = str(EXAMPLES_DIR / "rcsj_bias.json")

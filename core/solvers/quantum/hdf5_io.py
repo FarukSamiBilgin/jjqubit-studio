@@ -37,8 +37,9 @@ agreed directly between the producing and consuming teammates)::
       attrs: resonator_Z0_ohm, note (free-text explanation, see dispersive.py)
 
     /coherence  (group, present when coherence was computed)
-      attrs: T1_us, T2_us, Tphi_us, temperature_K, plus per-channel
-             t1_<channel>_us / tphi_<channel>_us (scqubits effective channels).
+      attrs: T1_us (total), T2_us, Tphi_us, T1_intrinsic_us, T1_purcell_us,
+             temperature_K, plus per-channel t1_<channel>_us /
+             tphi_<channel>_us (scqubits effective channels, plus t1_purcell).
              See core/solvers/quantum/coherence.py.
 
 Every physical dataset/attr name is suffixed with its unit (``_GHz``,
@@ -182,6 +183,8 @@ def write_hdf5(
             coherence_group.attrs["T1_us"] = coherence.T1_us
             coherence_group.attrs["T2_us"] = coherence.T2_us
             coherence_group.attrs["Tphi_us"] = coherence.Tphi_us
+            coherence_group.attrs["T1_intrinsic_us"] = coherence.T1_intrinsic_us
+            coherence_group.attrs["T1_purcell_us"] = coherence.T1_purcell_us
             coherence_group.attrs["temperature_K"] = coherence.temperature_K
             # channel names already carry their t1_/tphi_ prefix.
             for channel, t1_us in coherence.t1_channels_us.items():

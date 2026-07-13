@@ -132,6 +132,11 @@ class QuantumSolution:
         return self.coherence.Tphi_us
 
     @property
+    def T1_purcell_us(self) -> float:
+        """Purcell-limited T1 through the resonator, in us (inf if uncoupled)."""
+        return self.coherence.T1_purcell_us
+
+    @property
     def g_over_Delta(self) -> float:
         """Dispersive small parameter |g/Delta| (must be << 1 for validity)."""
         return self.dispersive.g_over_Delta
@@ -229,7 +234,7 @@ def solve_quantum(netlist: NetlistLike) -> QuantumSolution:
     quantization = quantize_circuit(net)
     spectrum = compute_transmon_spectrum(quantization.Ej_GHz, quantization.Ec_GHz)
     dispersive = compute_dispersive_shift(quantization, spectrum)
-    coherence = compute_coherence(quantization)
+    coherence = compute_coherence(quantization, dispersive=dispersive)
     return QuantumSolution(
         netlist=net,
         quantization=quantization,

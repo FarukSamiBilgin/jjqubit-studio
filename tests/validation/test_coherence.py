@@ -15,12 +15,16 @@ sanity of what we report rather than re-deriving scqubits' noise integrals:
 from __future__ import annotations
 
 import copy
+import math
 import pathlib
 
+import pytest
 from core.netlist import load
 from core.netlist.units import Quantity
-from core.solvers.quantum.coherence import compute_coherence
+from core.solvers.quantum.coherence import compute_coherence, purcell_t1_us
+from core.solvers.quantum.dispersive import compute_dispersive_shift
 from core.solvers.quantum.quantization import quantize_circuit
+from core.solvers.quantum.spectrum import compute_transmon_spectrum
 
 # tests/validation/test_coherence.py -> parents[2] is the repo root.
 _EXAMPLES = pathlib.Path(__file__).resolve().parents[2] / "examples"
@@ -77,3 +81,33 @@ class TestTunableSweetSpot:
         c = _coherence_at_flux(0.0)
         flux_tphi = c.tphi_channels_us.get("tphi_1_over_f_flux", float("inf"))
         assert flux_tphi > 1e4  # essentially infinite compared to other channels
+
+
+class TestPurcellT1:
+    def test_formula_scales_as_delta_over_g_squared_and_inverse_kappa(self):
+        # Gamma ~ kappa (g/Delta)^2, so T1 ~ (Delta/g)^2 / kappa.
+        base = purcell_t1_us(g_GHz=0.05, delta_GHz=1.0, kappa_GHz=1e-3)
+        # Double the detuning -> 4x longer T1.
+        assert purcell_t1_us(0.05, 2.0, 1e-3) == pytest.approx(4.0 * base, rel=1e-9)
+        # Double kappa -> half the T1.
+        assert purcell_t1_us(0.05, 1.0, 2e-3) == pytest.approx(base / 2.0, rel=1e-9)
+
+    def test_uncoupled_qubit_has_infinite_purcell_t1(self):
+        assert purcell_t1_us(g_GHz=0.0, delta_GHz=1.0, kappa_GHz=1e-3) == float("inf")
+
+    def test_purcell_shortens_total_t1_below_intrinsic(self):
+        net = load(TRANSMON, validate=True)
+        quantization = quantize_circuit(net)
+        spectrum = compute_transmon_spectrum(quantization.Ej_GHz, quantization.Ec_GHz)
+        dispersive = compute_dispersive_shift(quantization, spectrum)
+
+        without = compute_coherence(quantization)
+        with_purcell = compute_coherence(quantization, dispersive=dispersive)
+
+        assert math.isinf(without.T1_purcell_us)
+        assert math.isfinite(with_purcell.T1_purcell_us)
+        # Total T1 with Purcell is below the intrinsic-only T1 (an added loss).
+        assert with_purcell.T1_us < with_purcell.T1_intrinsic_us
+        assert with_purcell.T1_intrinsic_us == pytest.approx(without.T1_us, rel=1e-9)
+        # And still a physical Ramsey bound.
+        assert with_purcell.T2_us <= 2.0 * with_purcell.T1_us + 1e-6

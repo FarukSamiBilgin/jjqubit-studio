@@ -8,10 +8,10 @@ the waveform reader refuses a file from a newer major format version.
 from __future__ import annotations
 
 import copy
+import pathlib
 
 import h5py
 import pytest
-from conftest import EXAMPLES_DIR
 from core.netlist import load
 from core.netlist.units import Quantity
 from core.provenance import (
@@ -22,6 +22,9 @@ from core.provenance import (
     write_provenance,
 )
 
+# Self-contained (not `from conftest import ...`) to avoid the bare-`conftest`
+# module-name collision between test dirs that lack __init__.py.
+EXAMPLES_DIR = pathlib.Path(__file__).resolve().parents[2] / "examples"
 TRANSMON = str(EXAMPLES_DIR / "transmon_readout.json")
 RCSJ = str(EXAMPLES_DIR / "rcsj_bias.json")
 

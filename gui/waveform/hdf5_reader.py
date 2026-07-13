@@ -153,6 +153,8 @@ class QuantumResult:
     T1_us: float
     T2_us: float
     Tphi_us: float
+    T1_intrinsic_us: float
+    T1_purcell_us: float
     temperature_K: float
 
 
@@ -219,6 +221,8 @@ def load_quantum_result(path: str | Path) -> QuantumResult:
             T1_us=_coherence_attr(f, "T1_us"),
             T2_us=_coherence_attr(f, "T2_us"),
             Tphi_us=_coherence_attr(f, "Tphi_us"),
+            T1_intrinsic_us=_coherence_attr(f, "T1_intrinsic_us"),
+            T1_purcell_us=_coherence_attr(f, "T1_purcell_us"),
             temperature_K=_coherence_attr(f, "temperature_K"),
         )
 
