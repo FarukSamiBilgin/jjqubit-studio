@@ -48,6 +48,12 @@ def run(netlist_path: str, output_path: str) -> int:
         print(f"error: failed to load netlist {netlist_path!r}: {exc}", file=sys.stderr)
         return 1
 
+    # Dispatch on the number of Josephson elements: two qubits -> the coupled
+    # two-qubit solver; otherwise the single-transmon path below.
+    n_josephson = sum(1 for el in netlist.elements if el.type in ("junction", "squid"))
+    if n_josephson == 2:
+        return _run_two_qubit(netlist, output_path)
+
     try:
         quantization = quantize_circuit(netlist)
         spectrum = compute_transmon_spectrum(quantization.Ej_GHz, quantization.Ec_GHz)
@@ -84,6 +90,44 @@ def run(netlist_path: str, output_path: str) -> int:
         f"  T1 = {coherence.T1_us:.2f} us, T2 = {coherence.T2_us:.2f} us "
         f"(at {coherence.temperature_K * 1e3:.0f} mK)"
     )
+    return 0
+
+
+def _run_two_qubit(netlist, output_path: str) -> int:
+    """Run the coupled two-qubit solver for a two-Josephson-element netlist."""
+    from .multiqubit import (
+        compute_two_transmon_spectrum,
+        quantize_two_qubit_circuit,
+        write_two_qubit_hdf5,
+    )
+
+    try:
+        q = quantize_two_qubit_circuit(netlist)
+        result = compute_two_transmon_spectrum(
+            q.Ej1_GHz, q.Ec1_GHz, q.Ej2_GHz, q.Ec2_GHz, q.g_GHz
+        )
+    except TopologyError as exc:
+        print(f"error: unsupported netlist topology: {exc}", file=sys.stderr)
+        return 1
+
+    write_two_qubit_hdf5(
+        output_path,
+        netlist_name=netlist.name,
+        quantization=q,
+        result=result,
+        netlist_hash=netlist_sha256(netlist),
+    )
+
+    print(f"Quantum solver (2 qubits): {netlist.name!r} -> {output_path}")
+    print(
+        f"  w1 = {result.omega1_GHz:.4f} GHz, w2 = {result.omega2_GHz:.4f} GHz, "
+        f"detuning = {result.detuning_GHz * 1e3:.2f} MHz"
+    )
+    print(
+        f"  g = {q.g_GHz * 1e3:.2f} MHz (Cc = {q.Cc_fF:.2f} fF), "
+        f"J = {result.J_GHz * 1e3:.2f} MHz, ZZ = {result.zz_MHz:.3f} MHz"
+    )
+    print(f"  iSWAP time = {result.iswap_gate_time_ns:.2f} ns")
     return 0
 
 

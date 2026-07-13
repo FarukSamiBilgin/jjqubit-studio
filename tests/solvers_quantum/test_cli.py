@@ -26,6 +26,19 @@ class TestCliInProcess:
             assert f.attrs["format"] == "jjqubit-quantum-result"
             assert f["qubit"].attrs["Ej_over_Ec"] > 1.0
 
+    def test_dispatches_two_qubit_netlist_to_coupled_solver(
+        self, tmp_path, examples_dir
+    ):
+        # A netlist with two Josephson elements must produce a two-qubit result.
+        netlist_path = examples_dir / "two_transmon.json"
+        out_path = tmp_path / "out_2q.h5"
+        exit_code = main([str(netlist_path), str(out_path)])
+        assert exit_code == 0
+        with h5py.File(out_path, "r") as f:
+            assert f.attrs["format"] == "jjqubit-two-qubit-result"
+            assert "coupled" in f and "qubits" in f
+            assert f["coupled"].attrs["J_GHz"] > 0.0
+
     def test_missing_netlist_file_returns_nonzero_without_raising(self, tmp_path):
         exit_code = main(
             [str(tmp_path / "does_not_exist.json"), str(tmp_path / "out.h5")]

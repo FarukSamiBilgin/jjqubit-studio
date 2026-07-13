@@ -94,6 +94,13 @@ Every solver is a standalone CLI over a netlist file — no GUI required:
 python -m core.solvers.quantum examples\transmon_readout.json out_quantum.h5
 ```
 
+The quantum solver auto-detects a two-qubit netlist (two Josephson elements)
+and runs the coupled two-transmon solver instead:
+
+```powershell
+python -m core.solvers.quantum examples\two_transmon.json out_2q.h5
+```
+
 ## Scripting (the `jjqubit` API)
 
 For notebooks and batch/parameter sweeps there is a GUI-free Python API that
