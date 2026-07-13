@@ -1,0 +1,78 @@
+name: CI
+
+# Runs on every push and pull request. The app targets Windows and its native
+# numerics (scqubits/qutip BLAS, PySide6/Qt) are simplest to exercise on the
+# real target OS, so CI runs on windows-latest rather than fighting headless-Qt
+# system libraries on Linux. GUI tests run headless via QT_QPA_PLATFORM, which
+# each suite's conftest.py already sets to "offscreen".
+
+on:
+  push:
+    branches: ["main", "claude/**"]
+  pull_request:
+    branches: ["main"]
+
+# Cancel superseded runs on the same ref to save minutes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint (ruff)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - name: Install ruff
+        run: pip install ruff==0.14.4
+      - name: ruff check
+        run: ruff check --output-format=github .
+      - name: ruff format --check
+        run: ruff format --check .
+
+  types:
+    name: Types (mypy)
+    runs-on: windows-latest
+    # Non-blocking for now: mypy is being introduced as a signal on a codebase
+    # that had no prior type checking. Tightened on core/ over time, then made
+    # blocking. See pyproject.toml [tool.mypy].
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - name: Install deps
+        run: pip install -r requirements-dev.txt
+      - name: mypy core
+        run: mypy core
+
+  test:
+    name: Tests (py${{ matrix.python-version }})
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - name: Install runtime deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Run pytest (unit + validation)
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: pytest
