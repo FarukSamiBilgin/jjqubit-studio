@@ -138,6 +138,8 @@ class QuantumResult:
     Delta_GHz: float
     beta: float
     Cg_fF: float
+    g_over_Delta: float
+    dispersive_regime_valid: bool
 
     # /assumptions
     resonator_Z0_ohm: float
@@ -190,6 +192,12 @@ def load_quantum_result(path: str | Path) -> QuantumResult:
             Delta_GHz=float(coupling.attrs["Delta_GHz"]),
             beta=float(coupling.attrs["beta"]),
             Cg_fF=float(coupling.attrs["Cg_fF"]),
+            # Back-compatible defaults for files written before 1.1's
+            # dispersive-validity fields were added.
+            g_over_Delta=float(coupling.attrs.get("g_over_Delta", float("nan"))),
+            dispersive_regime_valid=bool(
+                coupling.attrs.get("dispersive_regime_valid", True)
+            ),
             resonator_Z0_ohm=float(assumptions.attrs["resonator_Z0_ohm"]),
             assumptions_note=str(assumptions.attrs["note"]),
         )

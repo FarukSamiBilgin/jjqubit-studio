@@ -77,6 +77,7 @@ convergent, physically expected multi-level correction).
 from __future__ import annotations
 
 import math
+import warnings
 from dataclasses import dataclass
 
 import scqubits as scq
@@ -91,6 +92,26 @@ from .spectrum import TransmonSpectrum
 # parameter, so we assume the standard on-chip CPW design value. Approved by
 # lead; documented here and mirrored into the HDF5 `/assumptions` group.
 DEFAULT_RESONATOR_IMPEDANCE_OHM = 50.0
+
+# The dispersive approximation requires the qubit and resonator to be far
+# detuned relative to their coupling: the small parameter |g/Delta| must be
+# << 1. chi here is computed non-perturbatively (full diagonalization), so it
+# stays finite even near resonance -- but its INTERPRETATION as a dispersive
+# shift breaks down there (the eigenstates hybridize and chi can grow large or
+# flip sign). We flag a result as out of the dispersive regime when
+# |g/Delta| exceeds this threshold. 0.1 (i.e. |Delta| > 10 g) is the common
+# textbook criterion for a solidly dispersive readout.
+DISPERSIVE_VALIDITY_THRESHOLD = 0.1
+
+
+class DispersiveRegimeWarning(UserWarning):
+    """Warns that a result is outside the dispersive regime (|g/Delta| too large).
+
+    Its ``chi`` is still a real dressed-spectrum quantity, but should not be
+    read as a perturbative dispersive shift. Filterable/suppressible via the
+    standard :mod:`warnings` machinery.
+    """
+
 
 # Oscillator (resonator mode) truncation for the composite Hilbert space.
 # Only the |0>,|1> photon manifolds are physically needed for chi, but a
@@ -123,6 +144,13 @@ class DispersiveResult:
         f0_GHz: The resonator's bare resonance frequency (as given in the
             netlist), for reference/HDF5.
         kappa_GHz: Resonator linewidth f0/Q, for reference/HDF5.
+        g_over_Delta: The dispersive small parameter |g/Delta| (dimensionless;
+            ``inf`` at exact resonance). The dispersive approximation is valid
+            only when this is << 1.
+        dispersive_regime_valid: ``True`` when ``g_over_Delta`` is below
+            :data:`DISPERSIVE_VALIDITY_THRESHOLD`. When ``False``, chi should
+            not be read as a perturbative dispersive shift (see
+            :class:`DispersiveRegimeWarning`).
     """
 
     g_GHz: float
@@ -132,6 +160,8 @@ class DispersiveResult:
     resonator_Z0_ohm: float
     f0_GHz: float
     kappa_GHz: float
+    g_over_Delta: float
+    dispersive_regime_valid: bool
 
 
 def dressed_chi_ghz(
@@ -242,6 +272,21 @@ def compute_dispersive_shift(
     )
     delta_ghz = spectrum.E01_GHz - f0_ghz
 
+    # Dispersive-regime validity: |g/Delta| must be << 1. Uses the physical
+    # 0<->1 coupling g_01 (not the internal bare coefficient) against the
+    # qubit-resonator detuning. inf at exact resonance.
+    g_over_delta = math.inf if delta_ghz == 0.0 else abs(g_01_ghz / delta_ghz)
+    dispersive_valid = g_over_delta < DISPERSIVE_VALIDITY_THRESHOLD
+    if not dispersive_valid:
+        warnings.warn(
+            f"outside the dispersive regime: |g/Delta| = {g_over_delta:.3g} "
+            f"(g_01 = {g_01_ghz * 1e3:.3g} MHz, Delta = {delta_ghz * 1e3:.3g} MHz); "
+            f"chi is a real dressed-spectrum value but not a perturbative "
+            f"dispersive shift here.",
+            DispersiveRegimeWarning,
+            stacklevel=2,
+        )
+
     if g_bare_ghz == 0.0:
         return DispersiveResult(
             g_GHz=0.0,
@@ -251,6 +296,8 @@ def compute_dispersive_shift(
             resonator_Z0_ohm=resonator_impedance_ohm,
             f0_GHz=f0_ghz,
             kappa_GHz=kappa_ghz,
+            g_over_Delta=g_over_delta,
+            dispersive_regime_valid=dispersive_valid,
         )
 
     # NOTE: dressed_chi_ghz takes the BARE coefficient (of the full n
@@ -267,4 +314,6 @@ def compute_dispersive_shift(
         resonator_Z0_ohm=resonator_impedance_ohm,
         f0_GHz=f0_ghz,
         kappa_GHz=kappa_ghz,
+        g_over_Delta=g_over_delta,
+        dispersive_regime_valid=dispersive_valid,
     )

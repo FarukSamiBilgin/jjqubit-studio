@@ -37,6 +37,8 @@ import pytest
 import scqubits as scq
 from core.solvers.quantum.dispersive import (
     DEFAULT_RESONATOR_IMPEDANCE_OHM,
+    DISPERSIVE_VALIDITY_THRESHOLD,
+    DispersiveRegimeWarning,
     compute_dispersive_shift,
     dressed_chi_ghz,
 )
@@ -289,4 +291,42 @@ class TestComputeDispersiveShiftEndToEnd:
         # assumed resonator impedance, see dispersive.py module docstring).
         assert result_200.g_GHz / result_50.g_GHz == pytest.approx(
             math.sqrt(4.0), rel=1e-6
+        )
+
+
+class TestDispersiveRegimeGuard:
+    """The solver must flag (and warn) when |g/Delta| leaves the dispersive regime."""
+
+    def test_far_detuned_is_valid_and_silent(self, recwarn):
+        # Default helper: transmon ~5 GHz, resonator 7.2 GHz -> far detuned.
+        net = make_transmon_resonator_netlist(f0_GHz=7.2)
+        quantization = quantize_circuit(net)
+        spectrum = compute_transmon_spectrum(quantization.Ej_GHz, quantization.Ec_GHz)
+        result = compute_dispersive_shift(quantization, spectrum)
+        assert result.dispersive_regime_valid is True
+        assert result.g_over_Delta < DISPERSIVE_VALIDITY_THRESHOLD
+        assert not any(
+            issubclass(w.category, DispersiveRegimeWarning) for w in recwarn.list
+        )
+
+    def test_on_resonance_is_invalid_and_warns(self):
+        # Tune the resonator ONTO the qubit's E01 so Delta -> 0.
+        net = make_transmon_resonator_netlist(f0_GHz=7.2)
+        quantization = quantize_circuit(net)
+        spectrum = compute_transmon_spectrum(quantization.Ej_GHz, quantization.Ec_GHz)
+        on_res = make_transmon_resonator_netlist(f0_GHz=spectrum.E01_GHz)
+        q2 = quantize_circuit(on_res)
+        s2 = compute_transmon_spectrum(q2.Ej_GHz, q2.Ec_GHz)
+        with pytest.warns(DispersiveRegimeWarning):
+            result = compute_dispersive_shift(q2, s2)
+        assert result.dispersive_regime_valid is False
+        assert result.g_over_Delta >= DISPERSIVE_VALIDITY_THRESHOLD
+
+    def test_g_over_delta_matches_abs_g_over_delta(self):
+        net = make_transmon_resonator_netlist(f0_GHz=7.2)
+        quantization = quantize_circuit(net)
+        spectrum = compute_transmon_spectrum(quantization.Ej_GHz, quantization.Ec_GHz)
+        result = compute_dispersive_shift(quantization, spectrum)
+        assert result.g_over_Delta == pytest.approx(
+            abs(result.g_GHz / result.Delta_GHz), rel=1e-12
         )

@@ -99,6 +99,16 @@ class QuantumSolution:
         """Qubit-resonator detuning Delta, in GHz."""
         return self.dispersive.Delta_GHz
 
+    @property
+    def g_over_Delta(self) -> float:
+        """Dispersive small parameter |g/Delta| (must be << 1 for validity)."""
+        return self.dispersive.g_over_Delta
+
+    @property
+    def dispersive_valid(self) -> bool:
+        """Whether chi may be read as a perturbative dispersive shift."""
+        return self.dispersive.dispersive_regime_valid
+
     def summary(self) -> dict[str, float]:
         """A flat dict of the headline scalars, handy for sweeps/DataFrames."""
         return {

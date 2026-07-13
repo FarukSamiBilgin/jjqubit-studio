@@ -18,6 +18,7 @@ from __future__ import annotations
 import copy
 import pathlib
 import sys
+import warnings
 
 # Running `python examples/sweep_transmon.py` puts examples/ (not the repo
 # root) on sys.path, so make the repo root importable before importing jjqubit.
@@ -28,6 +29,7 @@ if str(REPO_ROOT) not in sys.path:
 
 import jjqubit  # noqa: E402 - must follow the sys.path bootstrap above
 from core.netlist.units import Quantity  # noqa: E402
+from core.solvers.quantum.dispersive import DispersiveRegimeWarning  # noqa: E402
 
 BASE_NETLIST = EXAMPLES / "transmon_readout.json"
 
@@ -53,16 +55,26 @@ def main() -> None:
     junction_id = junctions[0].id
 
     print(f"Sweeping junction {junction_id!r} Ic in {BASE_NETLIST.name}\n")
-    header = f"{'Ic x':>6} {'Ej/Ec':>8} {'E01 (GHz)':>11} {'anharm (MHz)':>13} {'chi (MHz)':>10}"
+    header = (
+        f"{'Ic x':>6} {'Ej/Ec':>8} {'E01 (GHz)':>11} {'anharm (MHz)':>13} "
+        f"{'chi (MHz)':>10} {'|g/Delta|':>10} {'dispersive?':>12}"
+    )
     print(header)
     print("-" * len(header))
 
     for factor in (0.5, 0.75, 1.0, 1.5, 2.0, 3.0):
         net = _with_scaled_ic(base, junction_id, factor)
-        q = jjqubit.solve_quantum(net)
+        # As Ic grows E01 sweeps up through the resonator; near resonance the
+        # dispersive approximation stops being valid. Suppress the solver's
+        # warning here and report the validity flag as a column instead.
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DispersiveRegimeWarning)
+            q = jjqubit.solve_quantum(net)
+        flag = "yes" if q.dispersive_valid else "NO (near res.)"
         print(
             f"{factor:>6.2f} {q.Ej_over_Ec:>8.2f} {q.E01_GHz:>11.4f} "
-            f"{q.anharmonicity_GHz * 1e3:>13.2f} {q.chi_MHz:>10.4f}"
+            f"{q.anharmonicity_GHz * 1e3:>13.2f} {q.chi_MHz:>10.4f} "
+            f"{q.g_over_Delta:>10.3f} {flag:>12}"
         )
 
 

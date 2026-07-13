@@ -27,7 +27,10 @@ agreed directly between the producing and consuming teammates)::
       attrs: g_GHz (the PHYSICAL 0<->1 vacuum Rabi coupling -- see
              g_GHz_description attr and core/solvers/quantum/dispersive.py
              for why this differs from the "bare" coefficient used
-             internally), g_GHz_description, chi_GHz, Delta_GHz, beta, Cg_fF
+             internally), g_GHz_description, chi_GHz, Delta_GHz, beta, Cg_fF,
+             g_over_Delta (|g/Delta| dispersive small parameter),
+             dispersive_regime_valid (bool; False => chi is not a perturbative
+             dispersive shift, see dispersive.py DISPERSIVE_VALIDITY_THRESHOLD)
 
     /assumptions  (group)
       attrs: resonator_Z0_ohm, note (free-text explanation, see dispersive.py)
@@ -142,6 +145,10 @@ def write_hdf5(
         coupling_group.attrs["Delta_GHz"] = dispersive.Delta_GHz
         coupling_group.attrs["beta"] = dispersive.beta
         coupling_group.attrs["Cg_fF"] = quantization.Cg_fF
+        coupling_group.attrs["g_over_Delta"] = dispersive.g_over_Delta
+        coupling_group.attrs["dispersive_regime_valid"] = (
+            dispersive.dispersive_regime_valid
+        )
 
         assumptions_group = f.create_group("assumptions")
         assumptions_group.attrs["resonator_Z0_ohm"] = dispersive.resonator_Z0_ohm
