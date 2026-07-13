@@ -1,0 +1,12 @@
+# Normalize line endings so the repo stores LF regardless of the checkout OS.
+# Without this, editing on Windows churns every file between CRLF/LF and can
+# make `ruff format --check` disagree between local and CI.
+
+* text=auto eol=lf
+
+# Binary result/asset files must never be line-ending normalized.
+*.h5 binary
+*.hdf5 binary
+*.png binary
+*.ico binary
+*.exe binary
