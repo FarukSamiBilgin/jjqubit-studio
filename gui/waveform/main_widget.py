@@ -31,6 +31,7 @@ from PySide6.QtWidgets import (
 from .classical_view import ClassicalView
 from .energy_level_view import EnergyLevelView
 from .hdf5_reader import detect_result_kind
+from .two_qubit_view import TwoQubitView
 
 
 class WaveformViewer(QWidget):
@@ -41,6 +42,7 @@ class WaveformViewer(QWidget):
 
         self.energy_level_view = EnergyLevelView()
         self.classical_view = ClassicalView()
+        self.two_qubit_view = TwoQubitView()
         self._placeholder = QLabel("Open a solver result HDF5 file to begin.")
         self._placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
@@ -48,6 +50,7 @@ class WaveformViewer(QWidget):
         self.stack.addWidget(self._placeholder)
         self.stack.addWidget(self.energy_level_view)
         self.stack.addWidget(self.classical_view)
+        self.stack.addWidget(self.two_qubit_view)
         self.stack.setCurrentWidget(self._placeholder)
 
         open_btn = QPushButton("Open HDF5…")
@@ -77,6 +80,9 @@ class WaveformViewer(QWidget):
         elif kind == "classical":
             self.classical_view.load_file(path)
             self.stack.setCurrentWidget(self.classical_view)
+        elif kind == "two_qubit":
+            self.two_qubit_view.load_file(path)
+            self.stack.setCurrentWidget(self.two_qubit_view)
         else:
             raise ValueError(f"{path!r}: unrecognized result format")
         self.file_label.setText(str(path))
