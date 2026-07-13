@@ -1,0 +1,15 @@
+"""Pytest bootstrap for the interop importer tests.
+
+Ensures the repository root is importable so ``import core.interop`` works no
+matter where pytest is invoked from. No Qt is involved: ``core`` is GUI-free.
+"""
+
+from __future__ import annotations
+
+import pathlib
+import sys
+
+# tests/interop/conftest.py -> parents[2] is the repository root.
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
