@@ -75,3 +75,20 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
         run: pytest
+
+  docs:
+    name: Docs (mkdocs build)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements-docs.txt
+      - name: Install docs deps
+        run: pip install -r requirements-docs.txt
+      # --strict promotes broken-nav/orphan-page warnings to errors, so the
+      # docs site can't silently rot as the code evolves.
+      - name: mkdocs build --strict
+        run: mkdocs build -f mkdocs.yml --strict
