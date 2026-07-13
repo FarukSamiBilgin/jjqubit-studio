@@ -70,3 +70,7 @@ $RECYCLE.BIN/
 
 # ---- Claude Code (local settings) ----
 .claude/settings.local.json
+
+# ---- Packaging / docs build output ----
+scripts/installer/Output/
+/site/
