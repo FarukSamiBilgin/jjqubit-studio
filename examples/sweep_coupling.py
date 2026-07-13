@@ -46,7 +46,8 @@ def main() -> None:
     print(f"Tuning qubit 2 (J2) through qubit 1 in {BASE_NETLIST.name}\n")
     header = (
         f"{'J2 Ic x':>8} {'w1 (GHz)':>9} {'w2 (GHz)':>9} "
-        f"{'detuning (MHz)':>15} {'splitting (MHz)':>16} {'J (MHz)':>9}"
+        f"{'detuning (MHz)':>15} {'splitting (MHz)':>16} {'J (MHz)':>9} "
+        f"{'ZZ (MHz)':>10}"
     )
     print(header)
     print("-" * len(header))
@@ -54,15 +55,19 @@ def main() -> None:
     for factor in (0.85, 0.92, 0.96, 1.0, 1.04, 1.08, 1.15):
         net = _with_scaled_ic(base, "J2", factor)
         r = jjqubit.solve_two_qubit(net)
+        # ZZ is NaN at exact resonance (fully hybridized single-excitation states).
+        zz = "  n/a (res)" if r.zz_MHz != r.zz_MHz else f"{r.zz_MHz:>10.3f}"
         print(
             f"{factor:>8.2f} {r.omega1_GHz:>9.4f} {r.omega2_GHz:>9.4f} "
             f"{r.detuning_GHz * 1e3:>15.1f} "
-            f"{r.one_excitation_splitting_GHz * 1e3:>16.1f} {r.J_GHz * 1e3:>9.2f}"
+            f"{r.one_excitation_splitting_GHz * 1e3:>16.1f} {r.J_GHz * 1e3:>9.2f} "
+            f"{zz}"
         )
 
     print(
         "\nThe splitting is minimal at resonance (detuning ~ 0), where it "
-        "equals 2J -- the avoided crossing."
+        "equals 2J -- the avoided crossing. ZZ is the always-on conditional "
+        "shift (the dominant coherent error in fixed-coupling chips)."
     )
 
 

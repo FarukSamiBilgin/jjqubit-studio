@@ -53,6 +53,11 @@ class TwoTransmonResult:
         one_excitation_splitting_GHz: Energy gap between the two lowest excited
             (single-excitation) joint levels; minimal (= 2J) on resonance.
         g_GHz: The input charge-charge coupling coefficient of ``n1 * n2``.
+        zz_MHz: Static ZZ interaction ``E11 - E10 - E01 + E00``, in MHz -- the
+            always-on frequency shift of one qubit conditioned on the other,
+            the dominant coherent error in fixed-coupling multi-qubit chips.
+            ``NaN`` at exact resonance, where the bare |10>/|01> product states
+            are fully hybridized and cannot be individually labeled.
         coupled_levels_GHz: The low-lying joint eigenenergies relative to the
             joint ground state.
     """
@@ -63,6 +68,7 @@ class TwoTransmonResult:
     J_GHz: float
     one_excitation_splitting_GHz: float
     g_GHz: float
+    zz_MHz: float
     coupled_levels_GHz: np.ndarray
 
 
@@ -225,6 +231,8 @@ def compute_two_transmon_spectrum(
     j_squared = (splitting / 2.0) ** 2 - (detuning / 2.0) ** 2
     j_ghz = math.sqrt(j_squared) if j_squared > 0.0 else 0.0
 
+    zz_mhz = _static_zz_mhz(hilbert_space)
+
     return TwoTransmonResult(
         omega1_GHz=omega1,
         omega2_GHz=omega2,
@@ -232,5 +240,28 @@ def compute_two_transmon_spectrum(
         J_GHz=j_ghz,
         one_excitation_splitting_GHz=splitting,
         g_GHz=g_GHz,
+        zz_MHz=zz_mhz,
         coupled_levels_GHz=levels,
     )
+
+
+def _static_zz_mhz(hilbert_space: scq.HilbertSpace) -> float:
+    """Static ZZ shift E11 - E10 - E01 + E00, in MHz (NaN if not resolvable).
+
+    Uses the dressed-state lookup to identify the joint levels adiabatically
+    connected to the bare products |00>,|10>,|01>,|11>. At exact resonance the
+    single-excitation states are fully hybridized and the lookup cannot assign
+    |10> vs |01> (returns NaN), so ZZ is reported as NaN there.
+    """
+    hilbert_space.generate_lookup()
+
+    def energy(i: int, j: int) -> float:
+        e = hilbert_space.energy_by_bare_index((i, j))
+        return float(e) if e is not None else math.nan
+
+    e00 = energy(0, 0)
+    e10 = energy(1, 0)
+    e01 = energy(0, 1)
+    e11 = energy(1, 1)
+    zz_ghz = e11 - e10 - e01 + e00
+    return zz_ghz * 1e3  # GHz -> MHz

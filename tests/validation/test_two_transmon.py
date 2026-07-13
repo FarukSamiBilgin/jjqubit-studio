@@ -189,3 +189,29 @@ class TestTwoQubitTopologyErrors:
         net.connections = [c for c in net.connections if c.element != "Cc"]
         with pytest.raises(TopologyError, match="bridges the two qubit islands"):
             quantize_two_qubit_circuit(net)
+
+
+class TestStaticZZ:
+    def test_detuned_pair_has_finite_zz(self):
+        import math
+
+        r = compute_two_transmon_spectrum(15.0, EC, 13.0, EC, g_GHz=0.05)
+        assert math.isfinite(r.zz_MHz)
+        assert r.zz_MHz != 0.0
+
+    def test_resonant_identical_pair_zz_is_nan(self):
+        import math
+
+        # At exact resonance the |10>/|01> product states are fully hybridized;
+        # ZZ is not individually resolvable and is reported as NaN.
+        r = compute_two_transmon_spectrum(15.0, EC, 15.0, EC, g_GHz=0.05)
+        assert math.isnan(r.zz_MHz)
+
+    def test_zz_vanishes_in_the_decoupled_limit(self):
+        r = compute_two_transmon_spectrum(15.0, EC, 13.0, EC, g_GHz=1e-6)
+        assert r.zz_MHz == pytest.approx(0.0, abs=1e-3)
+
+    def test_zz_grows_with_coupling(self):
+        weak = compute_two_transmon_spectrum(15.0, EC, 13.0, EC, g_GHz=0.03)
+        strong = compute_two_transmon_spectrum(15.0, EC, 13.0, EC, g_GHz=0.06)
+        assert abs(strong.zz_MHz) > abs(weak.zz_MHz)
