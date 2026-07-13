@@ -94,6 +94,31 @@ Every solver is a standalone CLI over a netlist file — no GUI required:
 python -m core.solvers.quantum examples\transmon_readout.json out_quantum.h5
 ```
 
+## Scripting (the `jjqubit` API)
+
+For notebooks and batch/parameter sweeps there is a GUI-free Python API that
+wraps the same solver core (it never imports PySide6):
+
+```python
+import jjqubit
+
+net = jjqubit.load_netlist("examples/transmon_readout.json")
+
+q = jjqubit.solve_quantum(net)
+print(q.Ej_over_Ec, q.E01_GHz, q.anharmonicity_GHz, q.chi_MHz)
+q.write_hdf5("out_quantum.h5")     # same HDF5 the waveform viewer reads
+
+c = jjqubit.solve_classical(net)
+print(c.rcsj.phase_dynamics.dc_voltage_v)
+```
+
+A worked example that sweeps the junction critical current and tabulates
+E01 / anharmonicity / χ versus Ej/Ec:
+
+```powershell
+python examples\sweep_transmon.py
+```
+
 ## Tests
 
 ```powershell
