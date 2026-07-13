@@ -101,7 +101,9 @@ class TwoQubitQuantization:
             derived from the off-diagonal charging energy (capacitance-matrix
             inversion).
         Cc_fF: Total island<->island coupling capacitance, in fF.
-        topology: The raw :class:`TwoQubitTopology` this was derived from.
+        topology: The raw :class:`TwoQubitTopology` this was derived from, or
+            ``None`` when the quantization came from an external capacitance
+            matrix (no netlist topology).
     """
 
     Ej1_GHz: float
@@ -110,7 +112,7 @@ class TwoQubitQuantization:
     Ec2_GHz: float
     g_GHz: float
     Cc_fF: float
-    topology: TwoQubitTopology
+    topology: TwoQubitTopology | None = None
 
 
 def _island_shunt_capacitance_si(
@@ -153,11 +155,9 @@ def quantize_two_qubit_circuit(netlist: Netlist) -> TwoQubitQuantization:
         assert cap is not None
         cc += cap.params["C"].to_si()
 
-    c_matrix = np.array([[c1 + cc, -cc], [-cc, c2 + cc]])
-    c_inv = np.linalg.inv(c_matrix)
-    ec1 = _ELEMENTARY_CHARGE**2 * c_inv[0, 0] / 2.0 / _PLANCK_H / 1e9
-    ec2 = _ELEMENTARY_CHARGE**2 * c_inv[1, 1] / 2.0 / _PLANCK_H / 1e9
-    g = 4.0 * _ELEMENTARY_CHARGE**2 * c_inv[0, 1] / _PLANCK_H / 1e9
+    ec1, ec2, g = _charging_energies_from_matrix_si(
+        np.array([[c1 + cc, -cc], [-cc, c2 + cc]])
+    )
 
     return TwoQubitQuantization(
         Ej1_GHz=jp1.Ej_GHz,
@@ -167,6 +167,90 @@ def quantize_two_qubit_circuit(netlist: Netlist) -> TwoQubitQuantization:
         g_GHz=g,
         Cc_fF=cc * 1e15,
         topology=topo,
+    )
+
+
+def _charging_energies_from_matrix_si(
+    c_matrix_si: np.ndarray,
+) -> tuple[float, float, float]:
+    """Invert a 2x2 Maxwell capacitance matrix (Farad) into Ec1, Ec2, g (GHz).
+
+    ``Ec_i = e^2 (C^-1)_ii / 2`` on the diagonal; the charge-charge coupling
+    coefficient of ``n1 n2`` is ``g = 4 e^2 (C^-1)_12`` off-diagonal. Shared by
+    the netlist and external-capacitance-matrix quantization paths.
+    """
+    c_inv = np.linalg.inv(c_matrix_si)
+    ec1 = _ELEMENTARY_CHARGE**2 * c_inv[0, 0] / 2.0 / _PLANCK_H / 1e9
+    ec2 = _ELEMENTARY_CHARGE**2 * c_inv[1, 1] / 2.0 / _PLANCK_H / 1e9
+    g = 4.0 * _ELEMENTARY_CHARGE**2 * c_inv[0, 1] / _PLANCK_H / 1e9
+    return float(ec1), float(ec2), float(g)
+
+
+def quantize_two_qubit_from_capacitance(
+    matrix_fF: np.ndarray,
+    *,
+    Ej1_GHz: float,
+    Ej2_GHz: float,
+) -> TwoQubitQuantization:
+    """Quantize two qubits from an EXTERNAL 2x2 Maxwell capacitance matrix.
+
+    Realizes the CLAUDE.md design rule that the capacitance matrix is an INPUT
+    (e.g. an Ansys Q3D export loaded via :mod:`core.interop.capacitance_csv`),
+    not something this program computes from geometry. The two Josephson
+    energies (from the junction critical currents) are supplied separately.
+
+    Args:
+        matrix_fF: The 2x2 Maxwell capacitance matrix for the two qubit islands,
+            in fF (symmetric; diagonal = island total capacitance, off-diagonal
+            = negative mutual capacitance -- the standard short-circuit
+            capacitance-matrix convention).
+        Ej1_GHz, Ej2_GHz: Josephson energies of the two qubits, in GHz.
+
+    Returns:
+        A :class:`TwoQubitQuantization` (``topology`` is ``None``; ``Cc_fF`` is
+        the mutual capacitance ``-matrix[0,1]``).
+
+    Raises:
+        ValueError: if the matrix is not 2x2 or not (numerically) symmetric.
+    """
+    m = np.asarray(matrix_fF, dtype=float)
+    if m.shape != (2, 2):
+        raise ValueError(
+            f"expected a 2x2 capacitance matrix for two qubits, got shape {m.shape}; "
+            "reduce/eliminate non-qubit nodes upstream first"
+        )
+    if not np.allclose(m, m.T, rtol=1e-6, atol=1e-9):
+        raise ValueError("capacitance matrix must be symmetric")
+
+    ec1, ec2, g = _charging_energies_from_matrix_si(m * 1e-15)  # fF -> Farad
+    cc_fF = float(-m[0, 1])
+    return TwoQubitQuantization(
+        Ej1_GHz=Ej1_GHz,
+        Ec1_GHz=ec1,
+        Ej2_GHz=Ej2_GHz,
+        Ec2_GHz=ec2,
+        g_GHz=g,
+        Cc_fF=cc_fF,
+        topology=None,
+    )
+
+
+def solve_two_qubit_from_capacitance(
+    matrix_fF: np.ndarray,
+    *,
+    Ej1_GHz: float,
+    Ej2_GHz: float,
+    evals_count: int = 6,
+) -> TwoTransmonResult:
+    """Solve two qubits from an external capacitance matrix + the two Ej values.
+
+    Chains :func:`quantize_two_qubit_from_capacitance` and
+    :func:`compute_two_transmon_spectrum` -- the capacitance-matrix-as-input
+    path (e.g. an Ansys export via :mod:`core.interop`).
+    """
+    q = quantize_two_qubit_from_capacitance(matrix_fF, Ej1_GHz=Ej1_GHz, Ej2_GHz=Ej2_GHz)
+    return compute_two_transmon_spectrum(
+        q.Ej1_GHz, q.Ec1_GHz, q.Ej2_GHz, q.Ec2_GHz, q.g_GHz, evals_count=evals_count
     )
 
 

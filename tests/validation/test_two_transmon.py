@@ -15,6 +15,7 @@ checks pin that behavior against its analytic form
 
 from __future__ import annotations
 
+import numpy as np
 import pytest
 from core.netlist.model import Connection, Element, Netlist
 from core.netlist.units import Quantity
@@ -258,3 +259,49 @@ class TestGateMetrics:
         assert r.anharmonicity1_MHz < 0.0
         assert r.anharmonicity2_MHz < 0.0
         assert -400.0 < r.anharmonicity1_MHz < -150.0
+
+
+class TestFromExternalCapacitanceMatrix:
+    def test_matches_the_netlist_path_for_the_same_matrix(self):
+        from core.solvers.quantum.multiqubit import (
+            quantize_two_qubit_from_capacitance,
+        )
+
+        # Netlist example: islands 77 fF each (Cj 2 + Cs 75), Cc 4 fF -> Maxwell
+        # diagonal 81, off-diagonal -4. The external-matrix path must agree
+        # exactly with the netlist path (same validated inversion).
+        netlist = quantize_two_qubit_circuit(_two_qubit_netlist())
+        matrix = np.array([[81.0, -4.0], [-4.0, 81.0]])
+        external = quantize_two_qubit_from_capacitance(
+            matrix, Ej1_GHz=netlist.Ej1_GHz, Ej2_GHz=netlist.Ej2_GHz
+        )
+        assert external.Ec1_GHz == pytest.approx(netlist.Ec1_GHz, rel=1e-9)
+        assert external.Ec2_GHz == pytest.approx(netlist.Ec2_GHz, rel=1e-9)
+        assert external.g_GHz == pytest.approx(netlist.g_GHz, rel=1e-9)
+        assert external.Cc_fF == pytest.approx(netlist.Cc_fF, rel=1e-9)
+        assert external.topology is None
+
+    def test_full_loop_from_a_csv_via_interop(self, tmp_path):
+        # CSV (Ansys-Q3D-style export) -> interop reader -> quantizer.
+        from core.interop import read_capacitance_csv
+        from core.solvers.quantum.multiqubit import (
+            quantize_two_qubit_from_capacitance,
+        )
+
+        csv_path = tmp_path / "cmatrix.csv"
+        csv_path.write_text("Q1,Q2\n81.0,-4.0\n-4.0,81.0\n")
+        cap = read_capacitance_csv(str(csv_path))
+        q = quantize_two_qubit_from_capacitance(
+            cap.matrix_fF, Ej1_GHz=15.0, Ej2_GHz=15.0
+        )
+        assert q.g_GHz > 0.0
+        assert q.Ec1_GHz == pytest.approx(q.Ec2_GHz)  # symmetric matrix
+        assert q.Cc_fF == pytest.approx(4.0, rel=1e-9)
+
+    def test_rejects_non_2x2_matrix(self):
+        from core.solvers.quantum.multiqubit import (
+            quantize_two_qubit_from_capacitance,
+        )
+
+        with pytest.raises(ValueError, match="2x2"):
+            quantize_two_qubit_from_capacitance(np.eye(3), Ej1_GHz=15.0, Ej2_GHz=15.0)
