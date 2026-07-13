@@ -92,6 +92,27 @@ ELEMENT_TYPES: dict[str, ElementType] = {
             ParamSpec("Rn", "resistance"),  # normal-state resistance, e.g. kohm
         ),
     ),
+    # Flux-tunable transmon junction: a two-junction SQUID loop presented as a
+    # single two-terminal element (the loop is internal/lumped, like `junction`
+    # but with a flux knob). The effective Josephson energy tunes as
+    #   Ej(f) = EjMax * sqrt(cos^2(pi*f) + d^2 * sin^2(pi*f)),  f = Phi/Phi0,
+    # where EjMax comes from Ic_max and d is the junction asymmetry. Maps to
+    # scqubits.TunableTransmon. See core/solvers/quantum/quantization.py.
+    "squid": ElementType(
+        name="squid",
+        terminals=("p", "n"),
+        params=(
+            ParamSpec("Ic_max", "current"),  # max (zero-flux) critical current
+            ParamSpec("Cj", "capacitance"),  # junction self-capacitance, e.g. fF
+            ParamSpec("Rn", "resistance"),  # normal-state resistance, e.g. kohm
+            # Junction asymmetry d = (I2 - I1)/(I2 + I1), dimensionless. 0 is a
+            # symmetric SQUID (Ej fully suppressible at half-flux). Optional.
+            ParamSpec("d", "dimensionless", required=False),
+            # External flux threading the loop, in units of Phi0. Optional
+            # (defaults to 0 = no applied flux = maximum Ej).
+            ParamSpec("flux", "dimensionless", required=False),
+        ),
+    ),
     "capacitor": ElementType(
         name="capacitor",
         terminals=("a", "b"),

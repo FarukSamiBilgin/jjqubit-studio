@@ -35,13 +35,15 @@ class TopologyError(Exception):
 
 @dataclass(frozen=True)
 class QubitTopology:
-    """The junction (qubit) island located in a netlist.
+    """The Josephson element (qubit) island located in a netlist.
 
     Args:
-        junction: The sole ``junction`` element.
-        island_node: The non-ground node the junction's island terminal is
+        junction: The sole qubit Josephson element -- either a ``junction``
+            (fixed) or a ``squid`` (flux-tunable). Named ``junction`` for
+            historical reasons; check ``.type`` to distinguish.
+        island_node: The non-ground node the element's island terminal is
             wired to (i.e. the qubit's charge island).
-        ground_node: The ground node the junction's other terminal is wired to.
+        ground_node: The ground node the element's other terminal is wired to.
         capacitor_ids: Ids of every ``capacitor`` element with a terminal on
             ``island_node`` (shunt AND coupling capacitors alike -- any
             capacitance seen at the junction node contributes to Ec).
@@ -51,6 +53,11 @@ class QubitTopology:
     island_node: str
     ground_node: str
     capacitor_ids: tuple[str, ...]
+
+    @property
+    def is_tunable(self) -> bool:
+        """True if the qubit element is a flux-tunable ``squid``."""
+        return self.junction.type == "squid"
 
 
 @dataclass(frozen=True)
@@ -117,16 +124,23 @@ def extract_qubit_topology(netlist: Netlist) -> QubitTopology:
         every capacitor with a terminal on that node.
 
     Raises:
-        TopologyError: if there is not exactly one ``junction`` element, if
-            its terminals are not wired to exactly one ground node and one
-            non-ground node, or if there is no unambiguous 0V reference.
+        TopologyError: if there is not exactly one Josephson element
+            (``junction`` or ``squid``) total, if its terminals are not wired
+            to exactly one ground node and one non-ground node, or if there is
+            no unambiguous 0V reference.
     """
-    junctions = _elements_of_type(netlist, "junction")
+    # The qubit's Josephson element is either a fixed junction or a flux-tunable
+    # squid; exactly one across both types (multi-qubit is out of MVP scope).
+    junctions = _elements_of_type(netlist, "junction") + _elements_of_type(
+        netlist, "squid"
+    )
     if len(junctions) == 0:
-        raise TopologyError("netlist has no 'junction' element; nothing to quantize")
+        raise TopologyError(
+            "netlist has no 'junction' or 'squid' element; nothing to quantize"
+        )
     if len(junctions) > 1:
         raise TopologyError(
-            f"netlist has {len(junctions)} junctions "
+            f"netlist has {len(junctions)} Josephson elements "
             f"({[j.id for j in junctions]}); multi-qubit circuits are out of MVP scope"
         )
     junction = junctions[0]

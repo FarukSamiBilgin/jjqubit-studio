@@ -21,12 +21,12 @@ EXAMPLES_DIR = pathlib.Path(__file__).resolve().parents[2] / "examples"
 # -- element library reflects the frozen registry --------------------------------
 
 
-def test_all_eight_element_types_are_placeable():
+def test_all_element_types_are_placeable():
     model = CanvasModel()
     for type_name in ELEMENT_TYPES:
         el = model.add_element(type_name)
         assert el.type == type_name
-    assert len(model.elements) == 8
+    assert len(model.elements) == len(ELEMENT_TYPES)
 
 
 def test_unknown_element_type_rejected():
@@ -230,9 +230,13 @@ def test_round_tripped_netlist_still_validates(filename):
     model.to_netlist().validate()
 
 
-def test_from_netlist_covers_all_eight_element_types_between_the_two_examples():
+def test_from_netlist_covers_all_element_types_across_the_examples():
     seen: set[str] = set()
-    for filename in ("transmon_readout.json", "rcsj_bias.json"):
+    for filename in (
+        "transmon_readout.json",
+        "rcsj_bias.json",
+        "tunable_transmon.json",
+    ):
         nl = load(str(EXAMPLES_DIR / filename), validate=True)
         model = from_netlist(nl)
         seen.update(el.type for el in model.elements.values())

@@ -112,11 +112,13 @@ c = jjqubit.solve_classical(net)
 print(c.rcsj.phase_dynamics.dc_voltage_v)
 ```
 
-A worked example that sweeps the junction critical current and tabulates
-E01 / anharmonicity / χ versus Ej/Ec:
+Worked examples: sweep the junction critical current and tabulate
+E01 / anharmonicity / χ versus Ej/Ec, or tune a flux-tunable **squid**
+transmon across an external-flux arc:
 
 ```powershell
 python examples\sweep_transmon.py
+python examples\sweep_flux.py       # flux-tunable (squid) transmon
 ```
 
 ## Tests

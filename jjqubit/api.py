@@ -77,6 +77,21 @@ class QuantumSolution:
         return self.quantization.Ej_over_Ec
 
     @property
+    def EjMax_GHz(self) -> float:
+        """Max (zero-flux) Josephson energy; equals Ej_GHz for a fixed junction."""
+        return self.quantization.EjMax_GHz
+
+    @property
+    def flux(self) -> float:
+        """External flux Phi/Phi0 (0 for a fixed junction)."""
+        return self.quantization.flux
+
+    @property
+    def is_tunable(self) -> bool:
+        """Whether the qubit element is a flux-tunable squid."""
+        return self.quantization.element_type == "squid"
+
+    @property
     def E01_GHz(self) -> float:
         return self.spectrum.E01_GHz
 

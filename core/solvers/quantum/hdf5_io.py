@@ -18,7 +18,8 @@ agreed directly between the producing and consuming teammates)::
                -- eigenenergies E_0..E_{n-1} relative to the ground state
                   (E_0 = 0), for the energy-level diagram.
       attrs: Ej_GHz, Ec_GHz, Ej_over_Ec, E01_GHz, anharmonicity_GHz,
-             Ic_nA, C_sigma_fF, junction_id, island_node, n01
+             Ic_nA, C_sigma_fF, junction_id, island_node, n01,
+             element_type ("junction"/"squid"), EjMax_GHz, flux, asymmetry_d
 
     /resonator  (group)
       attrs: f0_GHz, Q, kappa_GHz, resonator_id, active_node
@@ -118,6 +119,12 @@ def write_hdf5(
         qubit_group.attrs["junction_id"] = quantization.junction_id
         qubit_group.attrs["island_node"] = quantization.island_node
         qubit_group.attrs["n01"] = spectrum.n01
+        # Flux-tunable (squid) metadata; for a fixed junction element_type is
+        # "junction", EjMax==Ej, flux==0, asymmetry_d==0.
+        qubit_group.attrs["element_type"] = quantization.element_type
+        qubit_group.attrs["EjMax_GHz"] = quantization.EjMax_GHz
+        qubit_group.attrs["flux"] = quantization.flux
+        qubit_group.attrs["asymmetry_d"] = quantization.asymmetry_d
 
         resonator_group = f.create_group("resonator")
         resonator_group.attrs["f0_GHz"] = dispersive.f0_GHz

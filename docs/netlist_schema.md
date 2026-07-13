@@ -116,6 +116,19 @@ her birimi kabul eder.
   - `Cj` — jonksiyon öz-kapasitansı (`capacitance`, tipik `fF`)
   - `Rn` — normal-durum direnci (`resistance`, tipik `kohm`)
 
+### `squid` — akı-ayarlanabilir jonksiyon (SQUID)
+İki-jonksiyonlu SQUID halkasını tek, iki-uçlu bir eleman olarak modeller
+(halka içseldir). Efektif Josephson enerjisi dış akı ile ayarlanır:
+`Ej(f) = EjMax · sqrt(cos²(πf) + d²·sin²(πf))`, `f = Φ/Φ0`. scqubits'in
+`TunableTransmon`'ına birebir eşlenir (bkz. `tests/validation/test_tunable_transmon.py`).
+- Terminaller: `[p, n]` (0 = p, 1 = n)
+- Parametreler:
+  - `Ic_max` — maksimum (sıfır-akı) kritik akım (`current`, tipik `nA`)
+  - `Cj` — jonksiyon öz-kapasitansı (`capacitance`, tipik `fF`)
+  - `Rn` — normal-durum direnci (`resistance`, tipik `kohm`)
+  - `d` — jonksiyon asimetrisi (`dimensionless`, **opsiyonel**, varsayılan 0)
+  - `flux` — dış akı `Φ/Φ0` (`dimensionless`, **opsiyonel**, varsayılan 0)
+
 ### `capacitor` — kapasitör
 - Terminaller: `[a, b]`
 - Parametreler: `C` — kapasitans (`capacitance`, tipik `fF`)
@@ -234,7 +247,10 @@ nl.terminals_on_node("q")  # -> o düğüme bağlı Connection listesi
   fin, fout`.
 - **`examples/rcsj_bias.json`** — akımla sürülen bir RCSJ jonksiyonu
   (current_source + junction + shunt kapasitör + indüktör). Klasik I-V için.
+- **`examples/tunable_transmon.json`** — `transmon_readout` ile aynı devre,
+  ama sabit `junction` yerine akı-ayarlanabilir bir `squid` (flux=0.25). Akı
+  süpürmesi için `examples/sweep_flux.py`'ye bakın.
 
-İki örnek birlikte sekiz MVP eleman tipinin (junction, capacitor, inductor,
+Örnekler birlikte dokuz eleman tipinin (junction, squid, capacitor, inductor,
 resistor, resonator, transmission_line, current_source, ground) tamamını
 kapsar.

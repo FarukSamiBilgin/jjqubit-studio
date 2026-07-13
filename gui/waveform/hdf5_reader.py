@@ -123,6 +123,10 @@ class QuantumResult:
     junction_id: str
     island_node: str
     n01: float
+    element_type: str
+    EjMax_GHz: float
+    flux: float
+    asymmetry_d: float
 
     # /resonator
     f0_GHz: float
@@ -181,6 +185,11 @@ def load_quantum_result(path: str | Path) -> QuantumResult:
             junction_id=str(qubit.attrs["junction_id"]),
             island_node=str(qubit.attrs["island_node"]),
             n01=float(qubit.attrs["n01"]),
+            # Back-compatible defaults for pre-squid files (a fixed junction).
+            element_type=str(qubit.attrs.get("element_type", "junction")),
+            EjMax_GHz=float(qubit.attrs.get("EjMax_GHz", qubit.attrs["Ej_GHz"])),
+            flux=float(qubit.attrs.get("flux", 0.0)),
+            asymmetry_d=float(qubit.attrs.get("asymmetry_d", 0.0)),
             f0_GHz=float(resonator.attrs["f0_GHz"]),
             Q=float(resonator.attrs["Q"]),
             kappa_GHz=float(resonator.attrs["kappa_GHz"]),

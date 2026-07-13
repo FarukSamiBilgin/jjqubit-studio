@@ -17,6 +17,7 @@ from .scene import ELEMENT_TYPE_MIME
 # Human-friendly labels for the palette; falls back to the raw type name.
 _DISPLAY_NAMES: dict[str, str] = {
     "junction": "Josephson Junction",
+    "squid": "Tunable Junction (SQUID)",
     "capacitor": "Capacitor",
     "inductor": "Inductor",
     "resistor": "Resistor",

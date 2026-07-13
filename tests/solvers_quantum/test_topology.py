@@ -94,7 +94,7 @@ class TestQubitTopology:
         )
         nl.connections.append(Connection("J2", 0, "q"))
         nl.connections.append(Connection("J2", 1, "gnd"))
-        with pytest.raises(TopologyError, match="2 junctions"):
+        with pytest.raises(TopologyError, match="2 Josephson elements"):
             extract_qubit_topology(nl)
 
     def test_junction_not_grounded_raises(self):
