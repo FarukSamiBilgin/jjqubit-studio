@@ -87,19 +87,21 @@ def collect_errors(netlist: Netlist) -> list[str]:
 
         # 5. unexpected parameters + 6. wrong dimension
         for pname, q in el.params.items():
-            spec = etype.param(pname)
-            if spec is None:
+            # Distinct name from the `spec` loop variable above (which is a
+            # non-optional ParamSpec); `param()` returns ParamSpec | None.
+            param_spec = etype.param(pname)
+            if param_spec is None:
                 allowed = ", ".join(p.name for p in etype.params) or "(none)"
                 errors.append(
                     f"element {el.id!r} ({el.type}): unknown parameter "
                     f"{pname!r} (allowed: {allowed})"
                 )
                 continue
-            if q.dimension != spec.dimension:
+            if q.dimension != param_spec.dimension:
                 errors.append(
                     f"element {el.id!r} ({el.type}): parameter {pname!r} has "
                     f"unit {q.unit!r} of dimension {q.dimension!r}, "
-                    f"expected {spec.dimension!r}"
+                    f"expected {param_spec.dimension!r}"
                 )
 
     element_ids = {el.id for el in netlist.elements}

@@ -53,6 +53,7 @@ to `main` for awareness; see the CLI/HDF5 output for the live disclosure.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 from scipy.constants import e as _ELEMENTARY_CHARGE
@@ -218,7 +219,7 @@ def dc_voltage(
     resistance_ohm: float,
     capacitance_f: float,
     bias_current_a: float,
-    **kwargs: float,
+    **kwargs: Any,
 ) -> float:
     """Time-averaged DC voltage across an RCSJ junction, in volts.
 

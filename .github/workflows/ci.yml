@@ -38,10 +38,9 @@ jobs:
   types:
     name: Types (mypy)
     runs-on: windows-latest
-    # Non-blocking for now: mypy is being introduced as a signal on a codebase
-    # that had no prior type checking. Tightened on core/ over time, then made
-    # blocking. See pyproject.toml [tool.mypy].
-    continue-on-error: true
+    # Blocking on core/: mypy core is clean and must stay clean (that is where
+    # a units/shape mistake is most dangerous -- CLAUDE.md physics rule).
+    # gui/ is not yet type-checked; extend coverage there before adding it.
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

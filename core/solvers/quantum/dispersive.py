@@ -159,7 +159,8 @@ def dressed_chi_ghz(
         the dressed energy adiabatically connected to bare product state
         |qubit level q, photon number n>.
     """
-    hilbert_space = scq.HilbertSpace([transmon, oscillator])
+    # scqubits ships no type stubs; mypy misreads HilbertSpace as abstract.
+    hilbert_space = scq.HilbertSpace([transmon, oscillator])  # type: ignore[abstract]
     hilbert_space.add_interaction(
         g=g_ghz,
         op1=(transmon.n_operator, transmon),
