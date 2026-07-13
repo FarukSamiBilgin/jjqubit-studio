@@ -334,10 +334,9 @@ def _make_cli_solver_runner(module: str, display_name: str) -> SolverRunner:
 # Registry of available solver backends, keyed by the name shown in the "Run"
 # solver selector / recorded in LastRunInfo.solver. Both backends share the
 # CLI-subprocess entry point (netlist path in, HDF5 path out) -- see
-# _make_cli_solver_runner. Note: solver-classical's numeric output has not
-# been cross-checked against tests/validation yet as of this writing (its CLI
-# interface is stable, its physics is still landing) -- see docs/task.md
-# Görev 7.
+# _make_cli_solver_runner. Both backends are cross-checked against
+# tests/validation (the RCSJ analytic limits and the transmon/CPB/dispersive
+# limits) -- see docs/task.md Görev 7.
 SOLVER_RUNNERS: dict[str, SolverRunner] = {
     "quantum": _make_cli_solver_runner("core.solvers.quantum", "Quantum solver"),
     "classical": _make_cli_solver_runner("core.solvers.classical", "Classical solver"),
@@ -516,10 +515,8 @@ class MainWindow(QMainWindow):
         toolbar.addWidget(QLabel(" Solver: "))
 
         self.solver_combo = QComboBox()
-        # Both are registered in SOLVER_RUNNERS (see gui/app.py module docs).
-        # solver-classical's numeric output is not yet cross-checked against
-        # tests/validation (its CLI interface is stable, its physics is
-        # still landing -- docs/task.md Görev 7), but the run mechanics work.
+        # Both are registered in SOLVER_RUNNERS (see gui/app.py module docs) and
+        # both are cross-checked against tests/validation.
         self.solver_combo.addItems(["quantum", "classical"])
         toolbar.addWidget(self.solver_combo)
 

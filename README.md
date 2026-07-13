@@ -23,6 +23,17 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
+For development (linting, type checking, and the pre-commit hooks that CI
+enforces), also install the dev tooling into the same environment:
+
+```powershell
+pip install -r requirements-dev.txt
+pre-commit install
+```
+
+The app is developed and tested against the pinned versions in
+`requirements.txt` on Python 3.11 and 3.13; CI runs the full suite on both.
+
 ## Running from source
 
 ```powershell
@@ -45,12 +56,13 @@ left, and a results panel on the right.
 4. Select each element and set its parameters (Ic, Cj, Rn for the junction;
    C for the capacitor; f0, Q for the resonator) in the property panel on the
    right.
-5. Pick a solver in the toolbar (**quantum** is available today; **classical**
-   is wired up the same way once it lands) and click **Run** (or press F5).
-   A progress bar tracks the run; the GUI stays responsive throughout.
-6. On success, the result's HDF5 path is shown in the results panel. (The
-   full waveform viewer — energy-level diagrams, S21 curves — is a separate,
-   in-progress module; see "Project status" below.)
+5. Pick a solver in the toolbar (**quantum** and **classical** are both
+   available) and click **Run** (or press F5). A progress bar tracks the run;
+   the GUI stays responsive throughout.
+6. On success, the result is rendered in the embedded waveform viewer:
+   energy-level diagrams and the dispersive shift for quantum runs, and the
+   RCSJ phase/I-V (plus the readout S21 curve when the circuit has a
+   resonator) for classical runs.
 7. **File → Save Project** writes a `.jjq` file (netlist + run metadata) you
    can reopen later with **File → Open Project**.
 
@@ -131,12 +143,17 @@ only take down the subprocess.
 
 This app is built by several teammates against the netlist contract in
 parallel; see `docs/task.md` for the full task breakdown and acceptance
-criteria. As of this module's last update:
+criteria. The MVP vertical slice is complete:
 
-- Netlist schema, quantum solver, and schematic canvas: done.
-- Classical solver and waveform viewer: in progress.
-- App shell (this module): main window, menu/toolbar, `.jjq` save/load, and
-  worker-thread solver orchestration are done and tested; the results panel
-  is a placeholder until the waveform viewer is embeddable, and only the
-  "quantum" solver is wired into the Run menu until the classical solver
-  reports done.
+- Netlist schema, quantum solver, classical solver, schematic canvas, and
+  waveform viewer: done.
+- App shell: main window, menu/toolbar, `.jjq` save/load, and worker-thread
+  (subprocess) solver orchestration are done and tested. Both the quantum and
+  classical solvers are wired into the Run menu, and results render in the
+  embedded waveform viewer.
+- Engineering baseline: reproducible venv from `requirements.txt`, ruff lint +
+  format and mypy configured (`pyproject.toml`), pre-commit hooks, and CI
+  (`.github/workflows/ci.yml`) running the full suite on Python 3.11 and 3.13.
+
+The full test suite (362 tests, including the `tests/validation` analytic-limit
+checks) passes end to end.
