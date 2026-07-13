@@ -435,6 +435,9 @@ class TwoQubitResult:
     J_GHz: float
     one_excitation_splitting_GHz: float
     zz_MHz: float
+    anharmonicity1_MHz: float
+    anharmonicity2_MHz: float
+    iswap_gate_time_ns: float
     coupled_levels_GHz: np.ndarray
 
 
@@ -470,5 +473,8 @@ def load_two_qubit_result(path: str | Path) -> TwoQubitResult:
                 coupled.attrs["one_excitation_splitting_GHz"]
             ),
             zz_MHz=float(coupled.attrs["zz_MHz"]),
+            anharmonicity1_MHz=float(coupled.attrs["anharmonicity1_MHz"]),
+            anharmonicity2_MHz=float(coupled.attrs["anharmonicity2_MHz"]),
+            iswap_gate_time_ns=float(coupled.attrs["iswap_gate_time_ns"]),
             coupled_levels_GHz=np.asarray(coupled["coupled_levels_GHz"][:]),
         )

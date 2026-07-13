@@ -293,6 +293,21 @@ class TwoQubitSolution:
         return self.result.zz_MHz
 
     @property
+    def iswap_gate_time_ns(self) -> float:
+        """Resonant iSWAP gate time 1/(4J), in ns (inf if uncoupled)."""
+        return self.result.iswap_gate_time_ns
+
+    @property
+    def anharmonicity1_MHz(self) -> float:
+        """Qubit 1 anharmonicity, in MHz."""
+        return self.result.anharmonicity1_MHz
+
+    @property
+    def anharmonicity2_MHz(self) -> float:
+        """Qubit 2 anharmonicity, in MHz."""
+        return self.result.anharmonicity2_MHz
+
+    @property
     def g_MHz(self) -> float:
         """Charge-charge coupling coefficient g, in MHz."""
         return self.quantization.g_GHz * 1e3

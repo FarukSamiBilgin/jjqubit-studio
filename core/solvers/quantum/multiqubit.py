@@ -66,6 +66,11 @@ class TwoTransmonResult:
             the dominant coherent error in fixed-coupling multi-qubit chips.
             ``NaN`` at exact resonance, where the bare |10>/|01> product states
             are fully hybridized and cannot be individually labeled.
+        anharmonicity1_MHz, anharmonicity2_MHz: Per-qubit anharmonicities
+            ``(E12 - E01)``, in MHz (negative for a transmon; sets the CZ gate).
+        iswap_gate_time_ns: Time for a full resonant iSWAP, ``1/(4J)`` in ns
+            (``inf`` when the qubits are uncoupled). The population swaps between
+            |10> and |01> at frequency 2J; a full swap takes 1/(4J).
         coupled_levels_GHz: The low-lying joint eigenenergies relative to the
             joint ground state.
     """
@@ -77,6 +82,9 @@ class TwoTransmonResult:
     one_excitation_splitting_GHz: float
     g_GHz: float
     zz_MHz: float
+    anharmonicity1_MHz: float
+    anharmonicity2_MHz: float
+    iswap_gate_time_ns: float
     coupled_levels_GHz: np.ndarray
 
 
@@ -240,6 +248,9 @@ def compute_two_transmon_spectrum(
     j_ghz = math.sqrt(j_squared) if j_squared > 0.0 else 0.0
 
     zz_mhz = _static_zz_mhz(hilbert_space)
+    anh1_mhz = _anharmonicity_mhz(t1)
+    anh2_mhz = _anharmonicity_mhz(t2)
+    iswap_ns = 1.0 / (4.0 * j_ghz) if j_ghz > 0.0 else math.inf
 
     return TwoTransmonResult(
         omega1_GHz=omega1,
@@ -249,8 +260,17 @@ def compute_two_transmon_spectrum(
         one_excitation_splitting_GHz=splitting,
         g_GHz=g_GHz,
         zz_MHz=zz_mhz,
+        anharmonicity1_MHz=anh1_mhz,
+        anharmonicity2_MHz=anh2_mhz,
+        iswap_gate_time_ns=iswap_ns,
         coupled_levels_GHz=levels,
     )
+
+
+def _anharmonicity_mhz(transmon: scq.Transmon) -> float:
+    """Single-transmon anharmonicity (E12 - E01), in MHz."""
+    ev = transmon.eigenvals(evals_count=3)
+    return float((ev[2] - ev[1]) - (ev[1] - ev[0])) * 1e3
 
 
 def _static_zz_mhz(hilbert_space: scq.HilbertSpace) -> float:
@@ -333,6 +353,9 @@ def write_two_qubit_hdf5(
             result.one_excitation_splitting_GHz
         )
         coupled.attrs["zz_MHz"] = result.zz_MHz
+        coupled.attrs["anharmonicity1_MHz"] = result.anharmonicity1_MHz
+        coupled.attrs["anharmonicity2_MHz"] = result.anharmonicity2_MHz
+        coupled.attrs["iswap_gate_time_ns"] = result.iswap_gate_time_ns
         levels = coupled.create_dataset(
             "coupled_levels_GHz", data=np.asarray(result.coupled_levels_GHz)
         )

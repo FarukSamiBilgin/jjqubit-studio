@@ -234,3 +234,27 @@ class TestTwoQubitHdf5RoundTrip:
         assert r.g_GHz == pytest.approx(sol.quantization.g_GHz, rel=1e-9)
         assert r.zz_MHz == pytest.approx(sol.zz_MHz, rel=1e-6)
         assert len(r.coupled_levels_GHz) == 6
+
+
+class TestGateMetrics:
+    def test_iswap_time_is_one_over_four_J(self):
+        r = compute_two_transmon_spectrum(15.0, EC, 15.0, EC, g_GHz=0.02)
+        assert r.iswap_gate_time_ns == pytest.approx(1.0 / (4.0 * r.J_GHz), rel=1e-9)
+
+    def test_iswap_time_shrinks_with_stronger_coupling(self):
+        weak = compute_two_transmon_spectrum(15.0, EC, 15.0, EC, g_GHz=0.01)
+        strong = compute_two_transmon_spectrum(15.0, EC, 15.0, EC, g_GHz=0.03)
+        assert strong.iswap_gate_time_ns < weak.iswap_gate_time_ns
+
+    def test_uncoupled_iswap_time_is_infinite(self):
+        import math
+
+        r = compute_two_transmon_spectrum(15.0, EC, 13.0, EC, g_GHz=0.0)
+        assert math.isinf(r.iswap_gate_time_ns)
+
+    def test_anharmonicities_are_negative_and_near_minus_ec(self):
+        r = compute_two_transmon_spectrum(15.0, EC, 15.0, EC, g_GHz=0.02)
+        # transmon anharmonicity is negative and of order -Ec (= -250 MHz here).
+        assert r.anharmonicity1_MHz < 0.0
+        assert r.anharmonicity2_MHz < 0.0
+        assert -400.0 < r.anharmonicity1_MHz < -150.0
