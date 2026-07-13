@@ -4,6 +4,7 @@ Shared by the energy-level view (toggling individual levels) and the S21
 view (toggling magnitude/phase traces) -- the list of channel names differs
 per-view, but "a checkable list that calls back on toggle" does not.
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -31,7 +32,9 @@ class ChannelToggleList(QListWidget):
         """Append a new checkable entry named ``name``."""
         item = QListWidgetItem(name)
         item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
-        item.setCheckState(Qt.CheckState.Checked if checked else Qt.CheckState.Unchecked)
+        item.setCheckState(
+            Qt.CheckState.Checked if checked else Qt.CheckState.Unchecked
+        )
         self.addItem(item)
 
     def clear_channels(self) -> None:

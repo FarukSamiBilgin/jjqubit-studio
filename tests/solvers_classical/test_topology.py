@@ -1,8 +1,8 @@
 """Tests for core.solvers.classical.topology: RCSJ-bias and readout extraction."""
+
 from __future__ import annotations
 
 import pytest
-
 from core.solvers.classical.topology import (
     TopologyError,
     extract_rcsj_topology,

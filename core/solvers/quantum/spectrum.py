@@ -11,6 +11,7 @@ scqubits convention: all energies (``EJ``, ``EC``, eigenvalues, ``E01``,
 energy / hbar). This module follows the same convention throughout, matching
 :mod:`core.solvers.quantum.quantization`.
 """
+
 from __future__ import annotations
 
 import math
@@ -87,10 +88,14 @@ def compute_transmon_spectrum(
     if Ej_GHz <= 0 or Ec_GHz <= 0:
         raise ValueError(f"Ej and Ec must be positive, got Ej={Ej_GHz}, Ec={Ec_GHz}")
     if n_levels < 3:
-        raise ValueError(f"n_levels must be >= 3 to define anharmonicity, got {n_levels}")
+        raise ValueError(
+            f"n_levels must be >= 3 to define anharmonicity, got {n_levels}"
+        )
 
     ncut = _adaptive_ncut(Ej_GHz / Ec_GHz)
-    transmon = scq.Transmon(EJ=Ej_GHz, EC=Ec_GHz, ng=ng, ncut=ncut, truncated_dim=n_levels)
+    transmon = scq.Transmon(
+        EJ=Ej_GHz, EC=Ec_GHz, ng=ng, ncut=ncut, truncated_dim=n_levels
+    )
 
     evals = transmon.eigenvals(evals_count=n_levels)
     energy_levels_GHz = evals - evals[0]  # report relative to the ground state

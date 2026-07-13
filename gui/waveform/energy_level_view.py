@@ -6,6 +6,7 @@ forcing it through a generic x/y line-plot widget (levels have no
 meaningful x-axis; what matters is their relative height and spacing).
 The 0->1 transition is highlighted since it is the qubit frequency.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -106,9 +107,13 @@ class EnergyLevelView(QWidget):
             name = f"n={n}"
             color = (255, 140, 0) if n <= 1 else (100, 180, 255)
             curve = self.plot_widget.plot(
-                [_LEVEL_X0, _LEVEL_X1], [energy, energy], pen=pg.mkPen(color=color, width=3)
+                [_LEVEL_X0, _LEVEL_X1],
+                [energy, energy],
+                pen=pg.mkPen(color=color, width=3),
             )
-            label = pg.TextItem(f"{name}  ({energy:.4g} GHz)", color=color, anchor=(0, 0.5))
+            label = pg.TextItem(
+                f"{name}  ({energy:.4g} GHz)", color=color, anchor=(0, 0.5)
+            )
             label.setPos(_LABEL_X, energy)
             self.plot_widget.addItem(label)
             self._level_curves[name] = curve
@@ -116,7 +121,9 @@ class EnergyLevelView(QWidget):
             self.channel_list.add_channel(name, checked=True)
 
         if len(levels) >= 2:
-            self._draw_01_transition(levels[0], levels[1], result.E01_GHz, result.anharmonicity_GHz)
+            self._draw_01_transition(
+                levels[0], levels[1], result.E01_GHz, result.anharmonicity_GHz
+            )
 
         self.plot_widget.getPlotItem().vb.autoRange()
         self.info_label.setText(self._info_text(result))
@@ -183,7 +190,9 @@ class EnergyLevelView(QWidget):
         for n, energy in enumerate(self.result.energy_levels_GHz):
             color = "darkorange" if n <= 1 else "steelblue"
             ax.hlines(energy, _LEVEL_X0, _LEVEL_X1, colors=color, linewidth=3)
-            ax.text(_LABEL_X, energy, f"n={n}  ({energy:.4g} GHz)", va="center", color=color)
+            ax.text(
+                _LABEL_X, energy, f"n={n}  ({energy:.4g} GHz)", va="center", color=color
+            )
         ax.set_xlim(_LEVEL_X0, _LABEL_X + 1.0)
         ax.set_xticks([])
         ax.set_ylabel("Energy (GHz, relative to ground state)")

@@ -14,6 +14,7 @@ The view widgets consume the dataclasses below (:class:`QuantumResult`,
 :class:`ClassicalResult`), never the HDF5 file directly, so a future layout
 change is absorbed here rather than rippling into the plotting code.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

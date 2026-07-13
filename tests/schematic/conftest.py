@@ -9,6 +9,7 @@ headless (no display required), and provides a shared, session-scoped
 Lives inside ``tests/schematic/`` (this module's owned scope) and touches
 nothing outside it.
 """
+
 from __future__ import annotations
 
 import os

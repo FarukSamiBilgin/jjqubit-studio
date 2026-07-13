@@ -6,15 +6,14 @@ File dialogs and message boxes are modal in real use, so tests monkeypatch
 instead of driving actual dialog widgets -- a standard headless-Qt-testing
 pattern (also keeps these tests fast and deterministic).
 """
+
 from __future__ import annotations
 
 import pathlib
 
-from PySide6.QtWidgets import QFileDialog, QMessageBox
-
 from core.netlist import load
-
 from gui.app import APP_NAME, MainWindow, load_project
+from PySide6.QtWidgets import QFileDialog, QMessageBox
 
 EXAMPLES_DIR = pathlib.Path(__file__).resolve().parents[2] / "examples"
 
@@ -55,7 +54,9 @@ def test_save_as_then_reopen_round_trip(qapp, tmp_path, monkeypatch):
 
     save_path = tmp_path / "myproj.jjq"
     monkeypatch.setattr(
-        QFileDialog, "getSaveFileName", staticmethod(lambda *a, **k: (str(save_path), ""))
+        QFileDialog,
+        "getSaveFileName",
+        staticmethod(lambda *a, **k: (str(save_path), "")),
     )
     ok = window.save_project_as()
 
@@ -66,13 +67,17 @@ def test_save_as_then_reopen_round_trip(qapp, tmp_path, monkeypatch):
 
     window2 = MainWindow()
     monkeypatch.setattr(
-        QFileDialog, "getOpenFileName", staticmethod(lambda *a, **k: (str(save_path), ""))
+        QFileDialog,
+        "getOpenFileName",
+        staticmethod(lambda *a, **k: (str(save_path), "")),
     )
     window2.open_project()
 
     assert window2.current_path == str(save_path)
     assert window2._dirty is False
-    assert set(window2.schematic.scene.element_items) == set(window.schematic.scene.element_items)
+    assert set(window2.schematic.scene.element_items) == set(
+        window.schematic.scene.element_items
+    )
 
 
 def test_save_project_current_reuses_existing_path(qapp, tmp_path, monkeypatch):
@@ -80,7 +85,9 @@ def test_save_project_current_reuses_existing_path(qapp, tmp_path, monkeypatch):
     _load_transmon_onto(window)
     save_path = tmp_path / "proj.jjq"
     monkeypatch.setattr(
-        QFileDialog, "getSaveFileName", staticmethod(lambda *a, **k: (str(save_path), ""))
+        QFileDialog,
+        "getSaveFileName",
+        staticmethod(lambda *a, **k: (str(save_path), "")),
     )
     assert window.save_project_as() is True
 
@@ -139,13 +146,17 @@ def test_new_project_cancelled_keeps_state(qapp, monkeypatch):
 
 def test_run_solver_blocked_on_invalid_netlist(qapp, monkeypatch):
     window = MainWindow()
-    window.schematic.scene.model.add_element("capacitor", element_id="C1")  # unwired: invalid
+    window.schematic.scene.model.add_element(
+        "capacitor", element_id="C1"
+    )  # unwired: invalid
 
     warnings: list[str] = []
     monkeypatch.setattr(
         QMessageBox,
         "warning",
-        staticmethod(lambda parent, title, text, *a, **k: warnings.append(text) or QMessageBox.Ok),
+        staticmethod(
+            lambda parent, title, text, *a, **k: warnings.append(text) or QMessageBox.Ok
+        ),
     )
 
     window.run_solver()
@@ -171,7 +182,10 @@ def test_run_solver_success_populates_results_panel(qapp):
     assert pathlib.Path(window.project.last_run.output_path).exists()
     # The result was handed to the real waveform viewer and displayed as a
     # quantum (energy-level) result, not left on its "no file" placeholder.
-    assert window.results_panel.stack.currentWidget() is window.results_panel.energy_level_view
+    assert (
+        window.results_panel.stack.currentWidget()
+        is window.results_panel.energy_level_view
+    )
     assert window.results_panel.file_label.text() == window.project.last_run.output_path
 
 
@@ -195,7 +209,9 @@ def test_run_solver_classical_backend_produces_a_result(qapp, monkeypatch):
     monkeypatch.setattr(
         QMessageBox,
         "warning",
-        staticmethod(lambda parent, title, text, *a, **k: warnings.append(text) or QMessageBox.Ok),
+        staticmethod(
+            lambda parent, title, text, *a, **k: warnings.append(text) or QMessageBox.Ok
+        ),
     )
 
     window.run_solver()
@@ -223,7 +239,9 @@ def test_run_solver_failure_recorded_in_last_run(qapp, monkeypatch):
         raise RuntimeError("synthetic solver failure")
 
     monkeypatch.setitem(app_module.SOLVER_RUNNERS, "quantum", raising_runner)
-    monkeypatch.setattr(QMessageBox, "critical", staticmethod(lambda *a, **k: QMessageBox.Ok))
+    monkeypatch.setattr(
+        QMessageBox, "critical", staticmethod(lambda *a, **k: QMessageBox.Ok)
+    )
 
     window.run_solver()
     assert window._worker is not None

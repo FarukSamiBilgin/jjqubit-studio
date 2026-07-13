@@ -4,6 +4,7 @@ Ensures the repository root is importable so ``import core.netlist`` works no
 matter where pytest is invoked from. This lives inside ``tests/netlist/`` (this
 module's owned scope) and touches nothing outside it.
 """
+
 from __future__ import annotations
 
 import pathlib

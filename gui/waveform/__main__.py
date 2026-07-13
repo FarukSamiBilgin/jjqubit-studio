@@ -6,6 +6,7 @@ so the waveform viewer can be exercised without the rest of the application
 opened immediately. Not used by the packaged app; a convenience for
 development only.
 """
+
 from __future__ import annotations
 
 import sys

@@ -1,9 +1,9 @@
 """Tests for core.solvers.classical.s21: readout notch resonance + line transmission."""
+
 from __future__ import annotations
 
 import numpy as np
 import pytest
-
 from core.solvers.classical.s21 import (
     compute_s21_curve,
     external_kappa_hz,
@@ -65,18 +65,24 @@ class TestNotchResponse:
 class TestLineTransmissionFactor:
     def test_matched_load_is_pure_unit_magnitude_delay(self):
         freq = np.linspace(6e9, 8e9, 11)
-        factor = line_transmission_factor(freq, _Z0_OHM, _LENGTH_M, _EPS_EFF, termination_ohm=_Z0_OHM)
+        factor = line_transmission_factor(
+            freq, _Z0_OHM, _LENGTH_M, _EPS_EFF, termination_ohm=_Z0_OHM
+        )
         assert np.allclose(np.abs(factor), 1.0, atol=1e-9)
 
     def test_mismatched_load_has_ripple(self):
         freq = np.linspace(6e9, 8e9, 401)
-        factor = line_transmission_factor(freq, _Z0_OHM, _LENGTH_M, _EPS_EFF, termination_ohm=25.0)
+        factor = line_transmission_factor(
+            freq, _Z0_OHM, _LENGTH_M, _EPS_EFF, termination_ohm=25.0
+        )
         mag = np.abs(factor)
         assert mag.max() - mag.min() > 0.05  # standing-wave ripple from the mismatch
 
     def test_zero_length_matched_is_transparent(self):
         freq = np.array([_F0_HZ])
-        factor = line_transmission_factor(freq, _Z0_OHM, 0.0, _EPS_EFF, termination_ohm=_Z0_OHM)
+        factor = line_transmission_factor(
+            freq, _Z0_OHM, 0.0, _EPS_EFF, termination_ohm=_Z0_OHM
+        )
         assert factor[0] == pytest.approx(1.0 + 0.0j, abs=1e-9)
 
 
@@ -110,5 +116,7 @@ class TestComputeS21Curve:
             eps_eff=_EPS_EFF,
             termination_ohm=_Z0_OHM,
         )
-        assert curve.kappa_total_hz == pytest.approx(curve.kappa_int_hz + curve.kappa_ext_hz)
+        assert curve.kappa_total_hz == pytest.approx(
+            curve.kappa_int_hz + curve.kappa_ext_hz
+        )
         assert curve.kappa_int_hz == pytest.approx(_F0_HZ / _Q_INTERNAL)

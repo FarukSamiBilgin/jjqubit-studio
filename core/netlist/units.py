@@ -13,6 +13,7 @@ Conventions
   ``eps_eff``) use an EMPTY unit string ``""``. The aliases ``"1"`` and
   ``"dimensionless"`` are also accepted on input.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -134,9 +135,7 @@ class Quantity:
         # Coerce numeric value to float for stable equality / round-trip.
         object.__setattr__(self, "value", float(self.value))
         if self.unit not in _UNITS:
-            raise UnitError(
-                f"unknown unit {self.unit!r} for value {self.value!r}"
-            )
+            raise UnitError(f"unknown unit {self.unit!r} for value {self.value!r}")
 
     @property
     def dimension(self) -> str:
@@ -160,7 +159,7 @@ class Quantity:
         return {"value": self.value, "unit": self.unit}
 
     @classmethod
-    def from_dict(cls, data: Any) -> "Quantity":
+    def from_dict(cls, data: Any) -> Quantity:
         """Build a :class:`Quantity` from a ``{"value", "unit"}`` mapping.
 
         Raises:

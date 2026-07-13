@@ -6,10 +6,10 @@ real mouse events (Qt's synthetic mouse events are unreliable headlessly);
 has resolved a scene position to data coordinates, so this still exercises
 the readout logic that matters.
 """
+
 from __future__ import annotations
 
 import pyqtgraph as pg
-
 from gui.waveform.cursor_tool import CursorReadout
 
 

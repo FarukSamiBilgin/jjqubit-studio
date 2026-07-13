@@ -42,7 +42,7 @@ External coupling rate from a small series coupling capacitor ``Ck`` feeding
 a matched ``Z0`` environment (weak-coupling / RWA limit,
 ``omega_0 * Ck * Z0 << 1``; Goeppl et al. 2008, eq. 26)::
 
-    kappa_ext = omega_0^2 * Ck^2 * Z0 / C_r      [rad/s]
+    kappa_ext = omega_0 ^ 2 * Ck ^ 2 * Z0 / C_r[rad / s]
 
 Internal rate from the netlist's ``Q``: ``kappa_int = omega_0 / Q``.
 
@@ -68,6 +68,7 @@ case in the bundled ``examples/transmon_readout.json``)::
 
 Total: ``S21(f) = S21_line(f) * S21_resonator(f)``.
 """
+
 from __future__ import annotations
 
 import math
@@ -253,7 +254,9 @@ def compute_s21_curve(
         The :class:`S21Curve`.
     """
     inductance_h, capacitance_f = resonator_lc_from_f0(f0_hz, resonator_impedance_ohm)
-    kappa_ext_hz = external_kappa_hz(f0_hz, coupling_capacitance_f, capacitance_f, z0_ohm)
+    kappa_ext_hz = external_kappa_hz(
+        f0_hz, coupling_capacitance_f, capacitance_f, z0_ohm
+    )
     kappa_int_hz = f0_hz / q_internal
     kappa_total_hz = kappa_int_hz + kappa_ext_hz
 
@@ -261,7 +264,9 @@ def compute_s21_curve(
     frequency_hz = np.linspace(f0_hz - half_span, f0_hz + half_span, n_points)
 
     s21_resonator = notch_response(frequency_hz, f0_hz, kappa_int_hz, kappa_ext_hz)
-    s21_line = line_transmission_factor(frequency_hz, z0_ohm, line_length_m, eps_eff, termination_ohm)
+    s21_line = line_transmission_factor(
+        frequency_hz, z0_ohm, line_length_m, eps_eff, termination_ohm
+    )
     s21 = s21_line * s21_resonator
 
     return S21Curve(

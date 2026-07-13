@@ -25,6 +25,7 @@ Validation:      :func:`validate`, :func:`collect_errors`.
 Exceptions:      :class:`NetlistError` (base), :class:`SchemaError`,
                  :class:`UnitError`, :class:`ValidationError`.
 """
+
 from __future__ import annotations
 
 from .errors import NetlistError, SchemaError, UnitError, ValidationError

@@ -7,8 +7,10 @@ box restricted to tokens of that parameter's required dimension (via
 adding a 9th element type to the registry (as ``resistor`` was added post-hoc)
 requires zero changes here.
 """
+
 from __future__ import annotations
 
+from core.netlist import ELEMENT_TYPES, Quantity
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
     QComboBox,
@@ -18,8 +20,6 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-
-from core.netlist import ELEMENT_TYPES, Quantity
 
 from .canvas_model import CanvasModel
 from .units_ui import default_unit_for, units_for_dimension
@@ -84,7 +84,11 @@ class PropertyPanel(QWidget):
 
             unit_box = QComboBox()
             unit_box.addItems(unit_choices)
-            current_unit = quantity.unit if quantity is not None else default_unit_for(spec.dimension)
+            current_unit = (
+                quantity.unit
+                if quantity is not None
+                else default_unit_for(spec.dimension)
+            )
             if current_unit in unit_choices:
                 unit_box.setCurrentText(current_unit)
             unit_box.currentTextChanged.connect(
@@ -93,7 +97,7 @@ class PropertyPanel(QWidget):
             self._unit_boxes[spec.name] = unit_box
 
             row = QWidget()
-            row_layout = _row_layout(row, value_box, unit_box)
+            _row_layout(row, value_box, unit_box)
             label = spec.name + ("" if spec.required else " (optional)")
             self._form.addRow(label, row)
 
@@ -116,7 +120,9 @@ class PropertyPanel(QWidget):
             self._form.removeRow(0)
 
 
-def _row_layout(row: QWidget, value_box: QDoubleSpinBox, unit_box: QComboBox) -> QWidget:
+def _row_layout(
+    row: QWidget, value_box: QDoubleSpinBox, unit_box: QComboBox
+) -> QWidget:
     """Pack ``value_box`` and ``unit_box`` side by side in ``row``."""
     from PySide6.QtWidgets import QHBoxLayout
 

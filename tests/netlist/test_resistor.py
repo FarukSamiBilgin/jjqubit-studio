@@ -5,22 +5,20 @@ needs a real matched-load termination (not a bare capacitor) for solver-classica
 S21 computation, so `resistor` (terminals [a, b], single param R: resistance)
 was added to ELEMENT_TYPES.
 """
+
 from __future__ import annotations
 
 import pytest
-
 from core.netlist import (
     ELEMENT_TYPES,
     Connection,
     Element,
-    Quantity,
     ValidationError,
     collect_errors,
     dumps,
     loads,
     validate,
 )
-
 from helpers import q, valid_netlist
 
 

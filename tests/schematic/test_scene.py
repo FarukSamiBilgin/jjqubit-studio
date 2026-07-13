@@ -5,12 +5,12 @@ These exercise the graphics <-> model sync (add/move/delete/wire) that
 ``QApplication`` (the ``qapp`` fixture) is enough since we drive the scene
 programmatically rather than through real mouse/keyboard input.
 """
+
 from __future__ import annotations
 
 import pathlib
 
 from core.netlist import load
-
 from gui.schematic.items import ElementItem, NodeItem, WireItem
 from gui.schematic.scene import SchematicScene
 

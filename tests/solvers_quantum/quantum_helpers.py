@@ -10,6 +10,7 @@ running the full repo suite together would otherwise silently import the
 wrong one. Renaming avoids the collision without touching
 ``tests/netlist/`` (owned by netlist-core).
 """
+
 from __future__ import annotations
 
 from core.netlist import Connection, Element, Netlist, Quantity
@@ -21,7 +22,11 @@ def q(value: float, unit: str) -> Quantity:
 
 
 def make_transmon_only_netlist(
-    *, Ic_nA: float = 30.0, Cj_fF: float = 2.0, Rn_kohm: float = 10.0, Cs_fF: float = 70.0
+    *,
+    Ic_nA: float = 30.0,
+    Cj_fF: float = 2.0,
+    Rn_kohm: float = 10.0,
+    Cs_fF: float = 70.0,
 ) -> Netlist:
     """Build a minimal junction+shunt-capacitor netlist with NO resonator.
 

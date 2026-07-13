@@ -5,12 +5,12 @@ superconducting-circuit design, so these tests pin down the netlist unit
 registry and the dimensional correctness of the derived energies. They depend
 only on ``core.netlist`` and the reference module -- no solver required.
 """
+
 from __future__ import annotations
 
 import math
 
 import pytest
-
 from core.netlist import Quantity, load, unit_dimension
 
 from . import reference as ref
@@ -20,13 +20,13 @@ from . import reference as ref
 @pytest.mark.parametrize(
     "value, unit, expected_si",
     [
-        (30.0, "nA", 30e-9),      # current
-        (2.0, "fF", 2e-15),      # capacitance
+        (30.0, "nA", 30e-9),  # current
+        (2.0, "fF", 2e-15),  # capacitance
         (70.0, "fF", 70e-15),
-        (10.0, "kohm", 10e3),     # resistance
-        (7.2, "GHz", 7.2e9),      # frequency
-        (6.0, "mm", 6e-3),       # length
-        (1.0, "V", 1.0),         # voltage
+        (10.0, "kohm", 10e3),  # resistance
+        (7.2, "GHz", 7.2e9),  # frequency
+        (6.0, "mm", 6e-3),  # length
+        (1.0, "V", 1.0),  # voltage
     ],
 )
 def test_quantity_to_si_scales_correctly(value, unit, expected_si):

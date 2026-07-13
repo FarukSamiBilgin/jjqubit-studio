@@ -16,6 +16,7 @@ the same point; that is how components are wired together.
 This module is pure data (stdlib only). It contains NO GUI imports, per the
 project's netlist-contract rule.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -86,9 +87,9 @@ ELEMENT_TYPES: dict[str, ElementType] = {
         name="junction",
         terminals=("p", "n"),
         params=(
-            ParamSpec("Ic", "current"),      # critical current, e.g. nA
+            ParamSpec("Ic", "current"),  # critical current, e.g. nA
             ParamSpec("Cj", "capacitance"),  # junction self-capacitance, e.g. fF
-            ParamSpec("Rn", "resistance"),   # normal-state resistance, e.g. kohm
+            ParamSpec("Rn", "resistance"),  # normal-state resistance, e.g. kohm
         ),
     ),
     "capacitor": ElementType(
@@ -104,22 +105,24 @@ ELEMENT_TYPES: dict[str, ElementType] = {
     "resistor": ElementType(
         name="resistor",
         terminals=("a", "b"),
-        params=(ParamSpec("R", "resistance"),),  # e.g. ohm; used for matched loads/ports
+        params=(
+            ParamSpec("R", "resistance"),
+        ),  # e.g. ohm; used for matched loads/ports
     ),
     "resonator": ElementType(
         name="resonator",
         terminals=("a", "b"),
         params=(
-            ParamSpec("f0", "frequency"),      # resonance frequency, e.g. GHz
-            ParamSpec("Q", "dimensionless"),   # quality factor
+            ParamSpec("f0", "frequency"),  # resonance frequency, e.g. GHz
+            ParamSpec("Q", "dimensionless"),  # quality factor
         ),
     ),
     "transmission_line": ElementType(
         name="transmission_line",
         terminals=("in", "out"),
         params=(
-            ParamSpec("Z0", "resistance"),         # characteristic impedance, ohm
-            ParamSpec("length", "length"),         # physical length, e.g. mm
+            ParamSpec("Z0", "resistance"),  # characteristic impedance, ohm
+            ParamSpec("length", "length"),  # physical length, e.g. mm
             ParamSpec("eps_eff", "dimensionless"),  # effective permittivity
         ),
     ),
@@ -159,7 +162,7 @@ class Element:
         }
 
     @classmethod
-    def from_dict(cls, data: Any) -> "Element":
+    def from_dict(cls, data: Any) -> Element:
         """Build an :class:`Element` from a mapping.
 
         Raises:
@@ -210,7 +213,7 @@ class Connection:
         return {"element": self.element, "terminal": self.terminal, "node": self.node}
 
     @classmethod
-    def from_dict(cls, data: Any) -> "Connection":
+    def from_dict(cls, data: Any) -> Connection:
         """Build a :class:`Connection` from a mapping.
 
         Raises:
@@ -288,7 +291,11 @@ class Netlist:
         if el is None:
             return []
         etype = ELEMENT_TYPES.get(el.type)
-        n = etype.n_terminals if etype is not None else len(self.connections_of(element_id))
+        n = (
+            etype.n_terminals
+            if etype is not None
+            else len(self.connections_of(element_id))
+        )
         result = [""] * n
         for c in self.connections_of(element_id):
             if 0 <= c.terminal < n:

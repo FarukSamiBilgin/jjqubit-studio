@@ -17,15 +17,13 @@ when the receiving thread's event loop runs; ``worker.wait()`` blocks until
 the background ``run()`` returns, then ``qapp.processEvents()`` drains the
 queued signal emissions into the plain Python lists these tests inspect.
 """
+
 from __future__ import annotations
 
 import pathlib
 
 import h5py
-import pytest
-
-from core.netlist import dump, load
-
+from core.netlist import dump
 from gui.app import SOLVER_RUNNERS, SolverWorker
 
 EXAMPLES_DIR = pathlib.Path(__file__).resolve().parents[2] / "examples"
@@ -40,7 +38,9 @@ def _drain(qapp, worker, timeout_ms: int = 30_000) -> None:
 # -- generic threading mechanism (fake runner) -----------------------------------
 
 
-def test_worker_dispatches_to_registered_runner_and_reports_progress(qapp, tmp_path, monkeypatch):
+def test_worker_dispatches_to_registered_runner_and_reports_progress(
+    qapp, tmp_path, monkeypatch
+):
     calls: list[tuple[int, str]] = []
 
     def fake_runner(netlist_path, output_path, report):
@@ -144,7 +144,9 @@ def test_quantum_runner_reports_invalid_netlist_as_failure(qapp, tmp_path):
 
     invalid = Netlist(
         name="floating",
-        elements=[Element(id="C1", type="capacitor", params={"C": Quantity(1.0, "fF")})],
+        elements=[
+            Element(id="C1", type="capacitor", params={"C": Quantity(1.0, "fF")})
+        ],
     )
     netlist_path = tmp_path / "invalid.json"
     dump(invalid, netlist_path, validate=False)

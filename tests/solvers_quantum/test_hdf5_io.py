@@ -4,11 +4,11 @@ Verifies the layout documented in hdf5_io.py's module docstring (and shared
 with waveform-ui/main): group names, dataset shape/unit attrs, and that every
 computed quantity round-trips into the file unchanged.
 """
+
 from __future__ import annotations
 
 import h5py
 import pytest
-
 from core.solvers.quantum.dispersive import compute_dispersive_shift
 from core.solvers.quantum.hdf5_io import FORMAT, FORMAT_VERSION, write_hdf5
 from core.solvers.quantum.quantization import quantize_circuit
@@ -53,7 +53,9 @@ class TestHdf5Layout:
             assert qubit.attrs["Ec_GHz"] == pytest.approx(quantization.Ec_GHz)
             assert qubit.attrs["Ej_over_Ec"] == pytest.approx(quantization.Ej_over_Ec)
             assert qubit.attrs["E01_GHz"] == pytest.approx(spectrum.E01_GHz)
-            assert qubit.attrs["anharmonicity_GHz"] == pytest.approx(spectrum.anharmonicity_GHz)
+            assert qubit.attrs["anharmonicity_GHz"] == pytest.approx(
+                spectrum.anharmonicity_GHz
+            )
             assert qubit.attrs["junction_id"] == "J1"
             assert qubit.attrs["island_node"] == "q"
 

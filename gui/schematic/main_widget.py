@@ -10,8 +10,10 @@ This module does no physics and no netlist validation logic of its own -- it
 only calls ``core.netlist.load``/``dump``/``collect_errors`` and surfaces
 their results.
 """
+
 from __future__ import annotations
 
+from core.netlist import NetlistError, ValidationError, dump, load
 from PySide6.QtWidgets import (
     QFileDialog,
     QHBoxLayout,
@@ -21,8 +23,6 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-
-from core.netlist import NetlistError, ValidationError, dump, load
 
 from .canvas_model import CanvasModel
 from .items import ElementItem
@@ -63,7 +63,9 @@ class SchematicEditor(QWidget):
         zoom_in_btn.clicked.connect(self.view.zoom_in)
         zoom_out_btn.clicked.connect(self.view.zoom_out)
         zoom_reset_btn.clicked.connect(self.view.zoom_reset)
-        grid_btn.clicked.connect(lambda: self.view.set_grid_visible(not self.view._grid_visible))
+        grid_btn.clicked.connect(
+            lambda: self.view.set_grid_visible(not self.view._grid_visible)
+        )
         load_btn.clicked.connect(self.prompt_load)
         save_btn.clicked.connect(self.prompt_save)
         validate_btn.clicked.connect(self.prompt_validate)
@@ -124,7 +126,9 @@ class SchematicEditor(QWidget):
 
     def prompt_load(self) -> None:
         """Open a file dialog and load the chosen netlist JSON file."""
-        path, _ = QFileDialog.getOpenFileName(self, "Load Netlist", "", "Netlist JSON (*.json)")
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Load Netlist", "", "Netlist JSON (*.json)"
+        )
         if not path:
             return
         try:
@@ -138,7 +142,9 @@ class SchematicEditor(QWidget):
         Saves without validation first if the netlist is invalid, after
         warning the user (a schematic in progress is often incomplete).
         """
-        path, _ = QFileDialog.getSaveFileName(self, "Save Netlist", "", "Netlist JSON (*.json)")
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Save Netlist", "", "Netlist JSON (*.json)"
+        )
         if not path:
             return
         errors = self.scene.model.collect_errors()

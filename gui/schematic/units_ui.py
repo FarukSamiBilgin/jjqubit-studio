@@ -6,6 +6,7 @@ parameter are derived from ``core.netlist.ELEMENT_TYPES``/``known_units``/
 netlist-core team adds a unit or a dimension, the property editor picks it up
 automatically.
 """
+
 from __future__ import annotations
 
 from core.netlist import ELEMENT_TYPES, ParamSpec, known_units, unit_dimension

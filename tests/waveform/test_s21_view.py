@@ -5,12 +5,12 @@ Loads the ``/readout`` group of the synthetic classical-result HDF5
 :class:`~gui.waveform.hdf5_reader.ReadoutS21` dataclass to the view --
 matching how :class:`~gui.waveform.classical_view.ClassicalView` drives it.
 """
-from __future__ import annotations
 
-from PySide6.QtCore import Qt
+from __future__ import annotations
 
 from gui.waveform.hdf5_reader import load_classical_result
 from gui.waveform.s21_view import MAGNITUDE_CHANNEL, PHASE_CHANNEL, S21View
+from PySide6.QtCore import Qt
 
 
 def _load_view(classical_result_h5) -> tuple[S21View, object]:
@@ -33,7 +33,9 @@ class TestS21View:
 
     def test_channel_list_has_magnitude_and_phase(self, qapp, classical_result_h5):
         view, _ = _load_view(classical_result_h5)
-        names = {view.channel_list.item(i).text() for i in range(view.channel_list.count())}
+        names = {
+            view.channel_list.item(i).text() for i in range(view.channel_list.count())
+        }
         assert names == {MAGNITUDE_CHANNEL, PHASE_CHANNEL}
 
     def test_toggling_magnitude_channel_hides_plot(self, qapp, classical_result_h5):

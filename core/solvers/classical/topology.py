@@ -23,6 +23,7 @@ MVP scope (docs/task.md, Gorev 2):
 A netlist may satisfy either, both, or neither topology; the CLI (see
 ``cli.py``) computes whichever parts are available and skips the rest.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -52,7 +53,9 @@ def _single_ground_node(netlist: Netlist) -> str:
     """
     grounds = set(netlist.ground_nodes())
     if len(grounds) == 0:
-        raise TopologyError("netlist has no 'ground' element; cannot identify the 0V reference")
+        raise TopologyError(
+            "netlist has no 'ground' element; cannot identify the 0V reference"
+        )
     if len(grounds) > 1:
         raise TopologyError(
             f"netlist has {len(grounds)} distinct ground nodes {sorted(grounds)}; "
@@ -163,17 +166,20 @@ def extract_rcsj_topology(netlist: Netlist) -> RCSJTopology:
     capacitor_ids = tuple(
         c.element
         for c in netlist.terminals_on_node(bias_node)
-        if (el := netlist.element_by_id(c.element)) is not None and el.type == "capacitor"
+        if (el := netlist.element_by_id(c.element)) is not None
+        and el.type == "capacitor"
     )
     shunt_resistor_ids = tuple(
         c.element
         for c in netlist.terminals_on_node(bias_node)
-        if (el := netlist.element_by_id(c.element)) is not None and el.type == "resistor"
+        if (el := netlist.element_by_id(c.element)) is not None
+        and el.type == "resistor"
     )
     inductor_ids = tuple(
         c.element
         for c in netlist.terminals_on_node(bias_node)
-        if (el := netlist.element_by_id(c.element)) is not None and el.type == "inductor"
+        if (el := netlist.element_by_id(c.element)) is not None
+        and el.type == "inductor"
     )
 
     return RCSJTopology(

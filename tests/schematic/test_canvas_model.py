@@ -5,14 +5,13 @@ driving off ``core.netlist.ELEMENT_TYPES``, dimension-respecting parameter
 edits, canvas -> netlist conversion, and the netlist -> canvas -> netlist
 round trip against both example netlists.
 """
+
 from __future__ import annotations
 
 import pathlib
 
 import pytest
-
 from core.netlist import ELEMENT_TYPES, Quantity, load
-
 from gui.schematic.canvas_model import CanvasModel, from_netlist
 from gui.schematic.units_ui import default_unit_for, units_for_dimension
 

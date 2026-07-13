@@ -5,6 +5,7 @@ matter where pytest is invoked from, and exposes small helpers shared by the
 validation tests. This file lives inside ``tests/validation/`` (this teammate's
 owned scope) and touches nothing outside it.
 """
+
 from __future__ import annotations
 
 import pathlib

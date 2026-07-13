@@ -1,11 +1,11 @@
 """Tests for core.solvers.classical.hdf5_io: HDF5 result layout."""
+
 from __future__ import annotations
 
 import h5py
 import pytest
-
 from core.solvers.classical.hdf5_io import FORMAT, FORMAT_VERSION, write_hdf5
-from core.solvers.classical.runner import run_readout_analysis, run_rcsj_analysis
+from core.solvers.classical.runner import run_rcsj_analysis, run_readout_analysis
 
 
 class TestWriteHdf5:
@@ -29,7 +29,9 @@ class TestWriteHdf5:
     def test_readout_only(self, tmp_path, transmon_netlist):
         readout = run_readout_analysis(transmon_netlist)
         out_path = tmp_path / "readout.h5"
-        write_hdf5(out_path, netlist_name=transmon_netlist.name, rcsj=None, readout=readout)
+        write_hdf5(
+            out_path, netlist_name=transmon_netlist.name, rcsj=None, readout=readout
+        )
 
         with h5py.File(out_path, "r") as f:
             assert "readout" in f
@@ -43,10 +45,14 @@ class TestWriteHdf5:
         with pytest.raises(ValueError):
             write_hdf5(tmp_path / "empty.h5", netlist_name="x", rcsj=None, readout=None)
 
-    def test_creates_readable_complex_s21_from_real_imag(self, tmp_path, transmon_netlist):
+    def test_creates_readable_complex_s21_from_real_imag(
+        self, tmp_path, transmon_netlist
+    ):
         readout = run_readout_analysis(transmon_netlist)
         out_path = tmp_path / "readout.h5"
-        write_hdf5(out_path, netlist_name=transmon_netlist.name, rcsj=None, readout=readout)
+        write_hdf5(
+            out_path, netlist_name=transmon_netlist.name, rcsj=None, readout=readout
+        )
         with h5py.File(out_path, "r") as f:
             real = f["readout/s21_real"][:]
             imag = f["readout/s21_imag"][:]

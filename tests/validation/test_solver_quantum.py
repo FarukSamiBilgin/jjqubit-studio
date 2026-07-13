@@ -27,11 +27,11 @@ anchor to <0.5%.
 Ground truth (Cj+Cs+Cg = 77 fF): Ej/h ~ 14.9005 GHz, Ec/h ~ 251.56 MHz,
 E01 ~ 5.2112 GHz, anharmonicity ~ -284.99 MHz.
 """
+
 from __future__ import annotations
 
 import numpy as np
 import pytest
-
 from core.netlist import load
 
 from . import reference as ref

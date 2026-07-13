@@ -9,17 +9,17 @@ Cross-checked by hand against the bundled example's parameters:
     Ej/Ec ~= 59.2  (deep transmon regime, matches Koch et al. 2007's typical
     experimental design range of a few tens to ~100)
 """
+
 from __future__ import annotations
 
 import math
 
 import pytest
-from scipy.constants import e as ELEMENTARY_CHARGE
-from scipy.constants import h as PLANCK_H
-
 from core.solvers.quantum.quantization import quantize_circuit
 from core.solvers.quantum.topology import TopologyError
 from quantum_helpers import make_transmon_only_netlist, make_transmon_resonator_netlist
+from scipy.constants import e as ELEMENTARY_CHARGE
+from scipy.constants import h as PLANCK_H
 
 FLUX_QUANTUM = PLANCK_H / (2.0 * ELEMENTARY_CHARGE)
 

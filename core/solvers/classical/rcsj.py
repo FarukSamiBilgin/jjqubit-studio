@@ -49,6 +49,7 @@ their presence is surfaced rather than silently ignored: the HDF5
 ``/assumptions`` group records a note whenever this occurs. This was flagged
 to `main` for awareness; see the CLI/HDF5 output for the live disclosure.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -173,7 +174,9 @@ def integrate_phase_dynamics(
         The :class:`PhaseDynamicsResult`.
     """
     if phi0_rad is None:
-        phi0_rad = float(np.arcsin(np.clip(bias_current_a / critical_current_a, -1.0, 1.0)))
+        phi0_rad = float(
+            np.arcsin(np.clip(bias_current_a / critical_current_a, -1.0, 1.0))
+        )
 
     omega_p = plasma_frequency_rad_s(critical_current_a, capacitance_f)
     t_end = n_plasma_periods * (2.0 * np.pi / omega_p)

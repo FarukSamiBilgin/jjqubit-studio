@@ -13,6 +13,7 @@ against the from-scratch charge-basis reference:
 
 Grounding: from-scratch charge-basis diagonalization.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -26,9 +27,7 @@ def test_zero_ej_gives_bare_charge_parabolas():
     ng = 0.0
     evals, _ = ref.cpb_eigensystem_hz(0.0, ec_hz, ng=ng, ncut=20)
     # Expected lowest levels: n = 0, +/-1, +/-2, ...  -> 0, 4Ec, 4Ec, 16Ec, 16Ec
-    expected = np.sort(
-        [4.0 * ec_hz * (n - ng) ** 2 for n in range(-20, 21)]
-    )
+    expected = np.sort([4.0 * ec_hz * (n - ng) ** 2 for n in range(-20, 21)])
     assert np.allclose(evals, expected, rtol=0, atol=1e-3)  # sub-mHz agreement
 
 
@@ -38,7 +37,7 @@ def test_charge_dispersion_grows_as_ej_ec_decreases():
     ratios = [50.0, 10.0, 3.0, 1.0, 0.3, 0.1]  # decreasing Ej/Ec
     disp = [ref.charge_dispersion_hz(r * ec_hz, ec_hz, level=0) for r in ratios]
     # Strictly increasing dispersion as Ej/Ec decreases.
-    assert all(d2 > d1 for d1, d2 in zip(disp, disp[1:]))
+    assert all(d2 > d1 for d1, d2 in zip(disp, disp[1:], strict=False))
 
 
 def test_cpb_limit_dispersion_is_order_ec():

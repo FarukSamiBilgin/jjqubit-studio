@@ -13,13 +13,13 @@ comes from an actual RCSJ / transmission-line simulation. This stays a
 test-only fixture generator in ``tests/waveform/`` (this teammate's owned
 test scope), not part of the shipped reader.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
 
 import h5py
 import numpy as np
-
 from gui.waveform.hdf5_reader import CLASSICAL_FORMAT
 
 
@@ -63,7 +63,9 @@ def write_synthetic_classical_hdf5(
     volt_up_uv = np.where(bias_up_na > ic_na, bias_up_na * rn_ohm / 1000.0, 0.0)
     bias_down_na = bias_up_na[::-1]
     # Down-sweep retraps at a much lower current (hysteresis) ~ 0.1*Ic.
-    volt_down_uv = np.where(bias_down_na > 0.1 * ic_na, bias_down_na * rn_ohm / 1000.0, 0.0)
+    volt_down_uv = np.where(
+        bias_down_na > 0.1 * ic_na, bias_down_na * rn_ohm / 1000.0, 0.0
+    )
 
     time_ns = np.linspace(0.0, 50.0, n_time)
     phase_rad = 2.0 * np.pi * 0.9 * time_ns  # phase running (voltage state)

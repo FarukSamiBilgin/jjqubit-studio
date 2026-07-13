@@ -11,6 +11,7 @@ via ``python -m gui.waveform`` (see ``__main__.py``).
 Does no physics and no HDF5-schema logic of its own -- all of that lives in
 ``hdf5_reader.py``; this module only wires file I/O to the two view widgets.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -82,7 +83,9 @@ class WaveformViewer(QWidget):
 
     def prompt_open_file(self) -> None:
         """Open a file dialog and load the chosen HDF5 result file."""
-        path, _ = QFileDialog.getOpenFileName(self, "Open Result", "", "HDF5 (*.h5 *.hdf5)")
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Open Result", "", "HDF5 (*.h5 *.hdf5)"
+        )
         if not path:
             return
         try:

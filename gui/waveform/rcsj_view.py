@@ -14,6 +14,7 @@ separate from the S21 view because they carry different axes/physics:
 Both consume the schema-independent dataclasses from
 :mod:`gui.waveform.hdf5_reader`, never the HDF5 file directly.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -82,9 +83,12 @@ class IVCurveView(QWidget):
         plot_item.showGrid(x=True, y=True, alpha=0.3)
         self.cursor = CursorReadout(plot_item, x_unit=" nA", y_unit=" uV")
 
-        self.up_curve = self.plot_widget.plot(pen=pg.mkPen(color="cyan", width=2), name="up")
+        self.up_curve = self.plot_widget.plot(
+            pen=pg.mkPen(color="cyan", width=2), name="up"
+        )
         self.down_curve = self.plot_widget.plot(
-            pen=pg.mkPen(color="orange", width=2, style=pg.QtCore.Qt.PenStyle.DashLine), name="down"
+            pen=pg.mkPen(color="orange", width=2, style=pg.QtCore.Qt.PenStyle.DashLine),
+            name="down",
         )
 
         self.info_label = QLabel("No result loaded.")
@@ -94,7 +98,11 @@ class IVCurveView(QWidget):
         self.channel_list.add_channel(DOWN_SWEEP_CHANNEL, checked=True)
 
         side_widget = _export_side_panel(
-            self, self.channel_list, self.info_label, self.prompt_export_csv, self.prompt_export_png
+            self,
+            self.channel_list,
+            self.info_label,
+            self.prompt_export_csv,
+            self.prompt_export_png,
         )
         layout = QHBoxLayout(self)
         layout.addWidget(self.plot_widget, stretch=3)
@@ -146,7 +154,9 @@ class IVCurveView(QWidget):
             raise ValueError("no rcsj result loaded")
         iv = self.rcsj.iv_curve
         fig, ax = plt.subplots(figsize=(6, 5))
-        ax.plot(iv.bias_current_up_nA, iv.voltage_up_uV, color="tab:blue", label="up sweep")
+        ax.plot(
+            iv.bias_current_up_nA, iv.voltage_up_uV, color="tab:blue", label="up sweep"
+        )
         ax.plot(
             iv.bias_current_down_nA,
             iv.voltage_down_uV,
@@ -195,7 +205,9 @@ class PhaseDynamicsView(QWidget):
         self.voltage_curve = self.voltage_plot.plot(pen=pg.mkPen(color="lime", width=1))
 
         self.phase_cursor = CursorReadout(self.phase_plot, x_unit=" ns", y_unit=" rad")
-        self.voltage_cursor = CursorReadout(self.voltage_plot, x_unit=" ns", y_unit=" uV")
+        self.voltage_cursor = CursorReadout(
+            self.voltage_plot, x_unit=" ns", y_unit=" uV"
+        )
 
         self.info_label = QLabel("No result loaded.")
         self.info_label.setWordWrap(True)
@@ -204,7 +216,11 @@ class PhaseDynamicsView(QWidget):
         self.channel_list.add_channel(VOLTAGE_CHANNEL, checked=True)
 
         side_widget = _export_side_panel(
-            self, self.channel_list, self.info_label, self.prompt_export_csv, self.prompt_export_png
+            self,
+            self.channel_list,
+            self.info_label,
+            self.prompt_export_csv,
+            self.prompt_export_png,
         )
         layout = QHBoxLayout(self)
         layout.addWidget(self.graphics, stretch=3)

@@ -4,6 +4,7 @@ A mouse-tracking crosshair does not care whether the axes hold discrete
 energy levels or a continuous S21 sweep, so this is shared by both the
 energy-level view and the S21 view rather than reimplemented per-view.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -19,7 +20,9 @@ class CursorReadout:
     without flooding Qt with per-pixel updates).
     """
 
-    def __init__(self, plot_item: pg.PlotItem, *, x_unit: str = "", y_unit: str = "") -> None:
+    def __init__(
+        self, plot_item: pg.PlotItem, *, x_unit: str = "", y_unit: str = ""
+    ) -> None:
         self.plot_item = plot_item
         self.x_unit = x_unit
         self.y_unit = y_unit

@@ -21,6 +21,7 @@ Reference junction (examples/rcsj_bias.json, inductor L1 excluded from the RCSJ
 model by design -- see below): Ic = 20 nA, R_total = 8 kohm, C_total = 53 fF,
 quality factor Q ~= 14.4 (underdamped/hysteretic).
 """
+
 from __future__ import annotations
 
 import subprocess
@@ -28,7 +29,6 @@ import sys
 
 import numpy as np
 import pytest
-
 from core.netlist import Quantity, dump, load
 
 from . import reference as ref
@@ -49,7 +49,13 @@ def _run_cli(netlist_path, out_path):
     persisted result -- the CLI/HDF5 contract, not an internal call.
     """
     proc = subprocess.run(
-        [sys.executable, "-m", "core.solvers.classical", str(netlist_path), str(out_path)],
+        [
+            sys.executable,
+            "-m",
+            "core.solvers.classical",
+            str(netlist_path),
+            str(out_path),
+        ],
         capture_output=True,
         text=True,
     )
@@ -124,7 +130,7 @@ def test_classical_dc_voltage_curve_matches_reference(frac):
     v_solver = classical.dc_voltage(_IC_A, _R_OHM, _C_F, i_bias)
     v_ref = ref.rcsj_dc_voltage_volt(_IC_A, _R_OHM, _C_F, i_bias)
     if frac < 1.0:
-        assert abs(v_solver) < 1e-4 * _V_SCALE      # supercurrent branch: V = 0
+        assert abs(v_solver) < 1e-4 * _V_SCALE  # supercurrent branch: V = 0
         assert abs(v_ref) < 1e-4 * _V_SCALE
     else:
         assert np.isclose(v_solver, v_ref, rtol=2e-3)
@@ -152,8 +158,8 @@ def test_classical_iv_curve_shows_hysteresis(examples_dir, tmp_path):
 
     ic_na = _IC_A * 1e9
     # Up-sweep: zero-voltage branch below ~Ic, then a finite running voltage.
-    assert np.all(np.abs(v_up[i_up < 0.9 * ic_na]) < 1.0)   # < 1 uV below 0.9 Ic
-    assert np.any(v_up[i_up > 1.1 * ic_na] > 10.0)          # running above ~Ic
+    assert np.all(np.abs(v_up[i_up < 0.9 * ic_na]) < 1.0)  # < 1 uV below 0.9 Ic
+    assert np.any(v_up[i_up > 1.1 * ic_na] > 10.0)  # running above ~Ic
 
     # Hysteresis: compare up- vs down-sweep at ~0.5 Ic (10 nA).
     def v_at(bias_na, currents, volts):
@@ -161,8 +167,8 @@ def test_classical_iv_curve_shows_hysteresis(examples_dir, tmp_path):
 
     v_up_10 = v_at(10.0, i_up, v_up)
     v_down_10 = v_at(10.0, i_down, v_down)
-    assert abs(v_up_10) < 1.0            # up-sweep: zero-voltage branch
-    assert v_down_10 > 10.0             # down-sweep: still running (hysteresis)
+    assert abs(v_up_10) < 1.0  # up-sweep: zero-voltage branch
+    assert v_down_10 > 10.0  # down-sweep: still running (hysteresis)
     # Running branch obeys V ~= I * R.
     assert np.isclose(v_down_10, 10.0 * _R_OHM * 1e-9 * 1e6, rtol=0.05)
 
@@ -184,7 +190,7 @@ def test_classical_inductor_excluded_from_rcsj_and_disclosed(examples_dir, tmp_p
     with h5py.File(out, "r") as f:
         inductor_ids = f["rcsj"].attrs["inductor_ids"]
         note = f["assumptions"].attrs.get("rcsj_inductor_note", "")
-    assert "L1" in inductor_ids                 # inductor detected at bias node
+    assert "L1" in inductor_ids  # inductor detected at bias node
     assert "L1" in note and "not included" in note.lower()  # exclusion disclosed
 
 
@@ -211,13 +217,17 @@ def test_classical_inductor_excluded_from_rcsj_and_disclosed(examples_dir, tmp_p
 #   is the sharpest discriminator against a dead junction.
 
 
-def _mccumber_beta_c(critical_current_a: float, resistance_ohm: float, capacitance_f: float) -> float:
+def _mccumber_beta_c(
+    critical_current_a: float, resistance_ohm: float, capacitance_f: float
+) -> float:
     """McCumber parameter beta_c = 2*pi*Ic*R^2*C / Phi0 (dimensionless).
 
     Computed independently of the solver from the netlist's Ic, R, C. Phi0 is the
     superconducting flux quantum (reference.PHI0 = h/2e).
     """
-    return 2.0 * np.pi * critical_current_a * resistance_ohm**2 * capacitance_f / ref.PHI0
+    return (
+        2.0 * np.pi * critical_current_a * resistance_ohm**2 * capacitance_f / ref.PHI0
+    )
 
 
 @pytest.mark.parametrize(
@@ -242,15 +252,15 @@ def test_classical_damping_crossover_proves_junction_alive(capacitance_f, regime
     beta_c = _mccumber_beta_c(_IC_A, _R_OHM, capacitance_f)
     i_bias = 25e-9
     v = classical.dc_voltage(_IC_A, _R_OHM, capacitance_f, i_bias)
-    v_iR = i_bias * _R_OHM                                   # 200 uV
-    v_rsj = _R_OHM * np.sqrt(i_bias**2 - _IC_A**2)          # 120 uV
+    v_iR = i_bias * _R_OHM  # 200 uV
+    v_rsj = _R_OHM * np.sqrt(i_bias**2 - _IC_A**2)  # 120 uV
 
     if regime == "underdamped":
-        assert beta_c > 100.0                                # genuinely underdamped
+        assert beta_c > 100.0  # genuinely underdamped
         assert np.isclose(v, v_iR, rtol=0.01)
     else:
-        assert beta_c < 0.1                                  # genuinely overdamped
-        assert np.isclose(v, v_rsj, rtol=0.05)               # ~R*sqrt(I^2-Ic^2)
+        assert beta_c < 0.1  # genuinely overdamped
+        assert np.isclose(v, v_rsj, rtol=0.05)  # ~R*sqrt(I^2-Ic^2)
         # And unambiguously NOT the dead-junction / I*R value.
         assert abs(v - v_iR) / v_iR > 0.25
 
@@ -271,9 +281,9 @@ def test_classical_ic_threshold_proves_junction_alive(ic_na, expect_zero):
     i_bias = 25e-9
     v = classical.dc_voltage(ic_na * 1e-9, _R_OHM, _C_F, i_bias)
     if expect_zero:
-        assert abs(v) < 1e-4 * _V_SCALE                      # Ic > Ib: blocked, V=0
+        assert abs(v) < 1e-4 * _V_SCALE  # Ic > Ib: blocked, V=0
     else:
-        assert np.isclose(v, i_bias * _R_OHM, rtol=0.01)     # Ic < Ib: running, ~I*R
+        assert np.isclose(v, i_bias * _R_OHM, rtol=0.01)  # Ic < Ib: running, ~I*R
 
 
 def test_classical_reported_quality_factor_matches_sqrt_beta_c(examples_dir, tmp_path):

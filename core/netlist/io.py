@@ -12,6 +12,7 @@ Structural problems raise :class:`SchemaError`; unknown units raise
 :class:`UnitError`. Semantic validation is a SEPARATE step (pass
 ``validate=True`` or call :meth:`Netlist.validate`).
 """
+
 from __future__ import annotations
 
 import json
@@ -53,9 +54,7 @@ def from_dict(data: Any) -> Netlist:
 
     fmt = data.get("format", FORMAT)
     if fmt != FORMAT:
-        raise SchemaError(
-            f"unexpected netlist format {fmt!r} (expected {FORMAT!r})"
-        )
+        raise SchemaError(f"unexpected netlist format {fmt!r} (expected {FORMAT!r})")
 
     version = data.get("version", SCHEMA_VERSION)
     if not isinstance(version, str):

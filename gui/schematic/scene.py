@@ -7,6 +7,7 @@ objects in sync with it. All netlist-shaped mutations (add/remove
 element/node, connect/disconnect terminals) go through the model; this class
 is the only place that also touches the graphics side.
 """
+
 from __future__ import annotations
 
 from PySide6.QtCore import QPointF, Qt, Signal
@@ -127,7 +128,7 @@ class SchematicScene(QGraphicsScene):
         self._connect(element_item, terminal, node_item)
         self._pending_terminal = None
 
-    def mousePressEvent(self, event: "QGraphicsSceneDragDropEvent") -> None:  # noqa: D102
+    def mousePressEvent(self, event: QGraphicsSceneDragDropEvent) -> None:  # noqa: D102
         # A click on empty canvas while a terminal is pending creates a new
         # node at that point and wires the pending terminal to it.
         if self._pending_terminal is not None and event.button() == Qt.LeftButton:
@@ -142,7 +143,9 @@ class SchematicScene(QGraphicsScene):
                 return
         super().mousePressEvent(event)
 
-    def _connect(self, element_item: ElementItem, terminal: int, node_item: NodeItem) -> None:
+    def _connect(
+        self, element_item: ElementItem, terminal: int, node_item: NodeItem
+    ) -> None:
         self.model.connect(element_item.element_id, terminal, node_item.node_id)
         # Remove any previous wire item for this exact terminal (a terminal can
         # only be bound once), then add the fresh one.
@@ -152,7 +155,11 @@ class SchematicScene(QGraphicsScene):
             if not (w.element_item is element_item and w.terminal == terminal)
         ]
         for w in list(self.items()):
-            if isinstance(w, WireItem) and w.element_item is element_item and w.terminal == terminal:
+            if (
+                isinstance(w, WireItem)
+                and w.element_item is element_item
+                and w.terminal == terminal
+            ):
                 self.removeItem(w)
         wire_item = WireItem(element_item, terminal, node_item)
         self.addItem(wire_item)
@@ -218,19 +225,19 @@ class SchematicScene(QGraphicsScene):
 
     # -- drag and drop from the element library --------------------------------
 
-    def dragEnterEvent(self, event: "QGraphicsSceneDragDropEvent") -> None:  # noqa: D102
+    def dragEnterEvent(self, event: QGraphicsSceneDragDropEvent) -> None:  # noqa: D102
         if event.mimeData().hasFormat(ELEMENT_TYPE_MIME):
             event.acceptProposedAction()
         else:
             super().dragEnterEvent(event)
 
-    def dragMoveEvent(self, event: "QGraphicsSceneDragDropEvent") -> None:  # noqa: D102
+    def dragMoveEvent(self, event: QGraphicsSceneDragDropEvent) -> None:  # noqa: D102
         if event.mimeData().hasFormat(ELEMENT_TYPE_MIME):
             event.acceptProposedAction()
         else:
             super().dragMoveEvent(event)
 
-    def dropEvent(self, event: "QGraphicsSceneDragDropEvent") -> None:  # noqa: D102
+    def dropEvent(self, event: QGraphicsSceneDragDropEvent) -> None:  # noqa: D102
         mime = event.mimeData()
         if mime.hasFormat(ELEMENT_TYPE_MIME):
             type_name = bytes(mime.data(ELEMENT_TYPE_MIME)).decode("utf-8")
@@ -243,5 +250,9 @@ class SchematicScene(QGraphicsScene):
 
     def _on_selection_changed(self) -> None:
         selected = self.selectedItems()
-        element = selected[0] if len(selected) == 1 and isinstance(selected[0], ElementItem) else None
+        element = (
+            selected[0]
+            if len(selected) == 1 and isinstance(selected[0], ElementItem)
+            else None
+        )
         self.selection_changed_element.emit(element)

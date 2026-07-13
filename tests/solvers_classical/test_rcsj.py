@@ -8,11 +8,11 @@ scope/test (``tests/validation/test_solver_classical.py``) -- it runs against
 this solver's public API/CLI output rather than this module reaching into
 ``tests/validation/`` itself, per project file ownership (CLAUDE.md).
 """
+
 from __future__ import annotations
 
 import numpy as np
 import pytest
-
 from core.solvers.classical.rcsj import (
     dc_voltage,
     integrate_phase_dynamics,
@@ -123,9 +123,13 @@ class TestIVSweepHysteresis:
         result = sweep_iv_curve(_IC_A, _R_OHM, _C_F, currents)
         i_mid = 0.5 * _IC_A
         v_up_at_mid = np.interp(i_mid, result.bias_current_up_a, result.voltage_up_v)
-        v_down_at_mid = np.interp(i_mid, result.bias_current_down_a[::-1], result.voltage_down_v[::-1])
+        v_down_at_mid = np.interp(
+            i_mid, result.bias_current_down_a[::-1], result.voltage_down_v[::-1]
+        )
         assert abs(v_up_at_mid) < 1e-3 * _V_SCALE
-        assert v_down_at_mid > 10.0 * abs(v_up_at_mid) or v_down_at_mid > 0.01 * _V_SCALE
+        assert (
+            v_down_at_mid > 10.0 * abs(v_up_at_mid) or v_down_at_mid > 0.01 * _V_SCALE
+        )
 
     def test_sweep_returns_up_and_down_of_equal_length(self):
         currents = np.linspace(0.0, 2.0 * _IC_A, 9)

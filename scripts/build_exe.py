@@ -18,6 +18,7 @@ Usage::
 Requires ``pyinstaller`` (see requirements.txt); this script does not
 install it for you.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -37,7 +38,7 @@ APP_NAME = "JJQubitStudio"
 # submodule, which is the blunt-but-reliable fix for these.
 COLLECT_ALL = [
     "scqubits",  # ships reference/cache data alongside code
-    "qutip",     # backend-selected submodules picked at import time
+    "qutip",  # backend-selected submodules picked at import time
 ]
 
 HIDDEN_IMPORTS = [

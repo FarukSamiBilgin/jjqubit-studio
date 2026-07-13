@@ -1,8 +1,8 @@
 """Tests for gui.waveform.main_widget.WaveformViewer: format dispatch."""
+
 from __future__ import annotations
 
 import pytest
-
 from gui.waveform.classical_view import ClassicalView
 from gui.waveform.energy_level_view import EnergyLevelView
 from gui.waveform.main_widget import WaveformViewer
@@ -30,7 +30,9 @@ class TestWaveformViewer:
             "Phase dynamics",
         ]
 
-    def test_switching_between_files_swaps_view(self, qapp, quantum_result_h5, classical_result_h5):
+    def test_switching_between_files_swaps_view(
+        self, qapp, quantum_result_h5, classical_result_h5
+    ):
         viewer = WaveformViewer()
         viewer.open_file(quantum_result_h5)
         assert viewer.stack.currentWidget() is viewer.energy_level_view

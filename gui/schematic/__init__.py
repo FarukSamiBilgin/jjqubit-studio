@@ -22,9 +22,16 @@ Public entry point for other teammates (e.g. ``app-core``, Task #6):
 
     from gui.schematic import SchematicEditor
 """
+
 from __future__ import annotations
 
-from .canvas_model import CanvasElement, CanvasModel, CanvasNode, CanvasWire, from_netlist
+from .canvas_model import (
+    CanvasElement,
+    CanvasModel,
+    CanvasNode,
+    CanvasWire,
+    from_netlist,
+)
 from .main_widget import SchematicEditor
 
 __all__ = [

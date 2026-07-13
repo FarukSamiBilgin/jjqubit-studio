@@ -15,6 +15,7 @@ ABOVE critical current (Ib = 25 nA > Ic = 20 nA), i.e. it is a *running-state*
 example, not a zero-voltage one. The subcritical case below is constructed
 explicitly.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -23,9 +24,9 @@ import pytest
 from . import reference as ref
 
 # A representative junction (same scale as the example netlists).
-_IC_A = 20e-9        # 20 nA critical current
-_RN_OHM = 8e3        # 8 kohm
-_C_F = 53e-15        # 53 fF (Cj + shunt)
+_IC_A = 20e-9  # 20 nA critical current
+_RN_OHM = 8e3  # 8 kohm
+_C_F = 53e-15  # 53 fF (Cj + shunt)
 
 # Voltage scale for tolerances: one flux quantum per nanosecond ~ 2 uV. The
 # supercurrent branch should be many orders of magnitude below this.

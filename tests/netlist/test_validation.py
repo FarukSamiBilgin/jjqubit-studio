@@ -3,10 +3,10 @@
 Every test starts from a known-valid netlist, breaks exactly one thing, and
 asserts that validation flags it (and names the offender in the message).
 """
+
 from __future__ import annotations
 
 import pytest
-
 from core.netlist import (
     Connection,
     Element,
@@ -15,7 +15,6 @@ from core.netlist import (
     collect_errors,
     validate,
 )
-
 from helpers import valid_netlist
 
 
@@ -125,8 +124,7 @@ def test_unconnected_terminal_detected():
     nl = valid_netlist()
     # Drop one of Cg's terminal bindings, leaving terminal 1 unconnected.
     nl.connections = [
-        c for c in nl.connections
-        if not (c.element == "Cg" and c.terminal == 1)
+        c for c in nl.connections if not (c.element == "Cg" and c.terminal == 1)
     ]
     msg = _messages(nl)
     assert "Cg" in msg and "not connected" in msg.lower()
@@ -159,10 +157,14 @@ def test_isolated_subcircuit_detected():
     nl.nodes.extend(["iso1", "iso2"])
     nl.elements.append(Element("Ciso", "capacitor", {"C": q(1.0, "fF")}))
     nl.elements.append(Element("Liso", "inductor", {"L": q(1.0, "nH")}))
-    nl.connections.extend([
-        Connection("Ciso", 0, "iso1"), Connection("Ciso", 1, "iso2"),
-        Connection("Liso", 0, "iso1"), Connection("Liso", 1, "iso2"),
-    ])
+    nl.connections.extend(
+        [
+            Connection("Ciso", 0, "iso1"),
+            Connection("Ciso", 1, "iso2"),
+            Connection("Liso", 0, "iso1"),
+            Connection("Liso", 1, "iso2"),
+        ]
+    )
     msg = _messages(nl)
     assert "not electrically connected to ground" in msg.lower()
 

@@ -10,4 +10,5 @@ This file intentionally contains no other code: sub-package ownership
 (``gui/schematic/``, ``gui/waveform/``, ``gui/app.py``) is unchanged, see
 ``CLAUDE.md``.
 """
+
 from __future__ import annotations

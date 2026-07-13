@@ -17,6 +17,7 @@ perturbative approximation. In the dispersive limit (small g) they must agree to
 
 Grounding: from-scratch charge-basis transmon + direct QuTiP diagonalization.
 """
+
 from __future__ import annotations
 
 import numpy as np

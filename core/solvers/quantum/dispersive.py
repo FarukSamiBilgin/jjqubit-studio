@@ -73,6 +73,7 @@ docstring test in test_dispersive.py for the closed-form cross-check this
 was validated against (exact agreement in the 2-level limit, then a
 convergent, physically expected multi-level correction).
 """
+
 from __future__ import annotations
 
 import math
@@ -175,7 +176,10 @@ def dressed_chi_ghz(
 
 
 def _coupling_strengths_ghz(
-    quantization: QubitQuantization, spectrum: TransmonSpectrum, f0_ghz: float, z_r_ohm: float
+    quantization: QubitQuantization,
+    spectrum: TransmonSpectrum,
+    f0_ghz: float,
+    z_r_ohm: float,
 ) -> tuple[float, float, float]:
     """Return (g_bare_GHz, g_01_GHz, beta) via the Blais/Koch/Krantz formula.
 
@@ -184,14 +188,22 @@ def _coupling_strengths_ghz(
     physical coupling (report this as :attr:`DispersiveResult.g_GHz`). See
     the module docstring for why these are NOT the same number.
     """
-    beta = quantization.Cg_fF / quantization.C_sigma_fF if quantization.C_sigma_fF > 0 else 0.0
+    beta = (
+        quantization.Cg_fF / quantization.C_sigma_fF
+        if quantization.C_sigma_fF > 0
+        else 0.0
+    )
     if beta == 0.0:
         return 0.0, 0.0, 0.0
 
     omega_r = 2.0 * math.pi * f0_ghz * 1e9  # rad/s
-    delta_v0 = omega_r * math.sqrt(_HBAR * z_r_ohm / math.pi)  # Volts (zero-point fluctuation)
+    delta_v0 = omega_r * math.sqrt(
+        _HBAR * z_r_ohm / math.pi
+    )  # Volts (zero-point fluctuation)
 
-    g_bare_joules = 2.0 * _ELEMENTARY_CHARGE * beta * delta_v0  # NO n01 factor here (see above)
+    g_bare_joules = (
+        2.0 * _ELEMENTARY_CHARGE * beta * delta_v0
+    )  # NO n01 factor here (see above)
     g_bare_ghz = (g_bare_joules / _PLANCK_H) / 1e9
     g_01_ghz = g_bare_ghz * spectrum.n01
     return g_bare_ghz, g_01_ghz, beta

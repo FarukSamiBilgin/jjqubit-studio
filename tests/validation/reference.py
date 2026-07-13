@@ -22,6 +22,7 @@ Grounding references
   "Charge-insensitive qubit design derived from the Cooper pair box",
   Phys. Rev. A 76, 042319 (2007).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -31,9 +32,9 @@ import scipy.constants as sc
 from scipy.integrate import solve_ivp
 
 # --- Physical constants (CODATA, via scipy.constants) ----------------------
-H_PLANCK: float = sc.h            # J*s
-E_CHARGE: float = sc.e            # C
-HBAR: float = sc.hbar            # J*s
+H_PLANCK: float = sc.h  # J*s
+E_CHARGE: float = sc.e  # C
+HBAR: float = sc.hbar  # J*s
 PHI0: float = H_PLANCK / (2.0 * E_CHARGE)  # superconducting flux quantum, Wb
 
 

@@ -17,7 +17,7 @@ project convention -- see CLAUDE.md's unit rule):
   :func:`core.solvers.quantum.topology.extract_qubit_topology`, never
   hardcoded)::
 
-      E_C = e^2 / (2 * C_sigma)                                  [Joules]
+      E_C = e ^ 2 / (2 * C_sigma)[Joules]
 
   Reported as ``E_C / h`` in GHz.
 
@@ -32,15 +32,15 @@ Sign/units convention is verified against the bundled
 squarely in the textbook transmon regime (Koch et al., PRA 76, 042319
 (2007), typically design for Ej/Ec of a few tens to ~100).
 """
+
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass
 
+from core.netlist import Netlist
 from scipy.constants import e as _ELEMENTARY_CHARGE
 from scipy.constants import h as _PLANCK_H
-
-from core.netlist import Netlist
 
 from .topology import (
     CouplingTopology,

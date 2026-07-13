@@ -5,12 +5,12 @@ Task #3 solver pipeline (``quantum_result_h5`` fixture, see conftest.py),
 and the classical-result reader against the synthetic file this teammate
 constructs in the finalized classical schema (``classical_synthetic.py``).
 """
+
 from __future__ import annotations
 
 import h5py
 import numpy as np
 import pytest
-
 from gui.waveform.hdf5_reader import (
     CLASSICAL_FORMAT,
     QUANTUM_FORMAT,
@@ -82,7 +82,11 @@ class TestLoadClassicalResult:
         assert result.netlist_name == "Synthetic S21 sweep"
         assert result.readout is not None
         readout = result.readout
-        assert len(readout.frequency_GHz) == len(readout.magnitude_dB) == len(readout.phase_deg)
+        assert (
+            len(readout.frequency_GHz)
+            == len(readout.magnitude_dB)
+            == len(readout.phase_deg)
+        )
         assert len(readout.frequency_GHz) == 501
         # A resonance dip should exist somewhere near the sweep center.
         assert readout.magnitude_dB.min() < readout.magnitude_dB[0]

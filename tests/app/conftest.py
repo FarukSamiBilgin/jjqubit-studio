@@ -9,6 +9,7 @@ since Qt only allows one per process. Mirrors ``tests/schematic/conftest.py``.
 Lives inside ``tests/app/`` (this module's owned scope) and touches nothing
 outside it.
 """
+
 from __future__ import annotations
 
 import os

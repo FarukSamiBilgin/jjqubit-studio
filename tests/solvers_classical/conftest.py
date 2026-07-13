@@ -5,6 +5,7 @@ and ``import core.netlist`` work no matter where pytest is invoked from. This
 lives inside ``tests/solvers_classical/`` (this module's owned scope) and
 touches nothing outside it.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -16,7 +17,6 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 import pytest
-
 from core.netlist import Netlist, load
 
 

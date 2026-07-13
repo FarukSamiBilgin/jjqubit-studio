@@ -21,6 +21,7 @@ Checked failure modes
 12. Floating node: fewer than two terminals attached.
 13. Node not electrically connected to any ground node.
 """
+
 from __future__ import annotations
 
 from collections import Counter
@@ -161,7 +162,9 @@ def collect_errors(netlist: Netlist) -> list[str]:
         )
 
     # -- 12. floating nodes (fewer than two terminals attached) -----------
-    degree: Counter = Counter(c.node for c in netlist.connections if c.node in declared_nodes)
+    degree: Counter = Counter(
+        c.node for c in netlist.connections if c.node in declared_nodes
+    )
     for node in netlist.nodes:
         d = degree.get(node, 0)
         if d < 2:
@@ -178,9 +181,7 @@ def collect_errors(netlist: Netlist) -> list[str]:
             # Only report genuinely isolated nodes that are at least wired up;
             # fully floating nodes are already reported by check 12.
             if node not in reachable and degree.get(node, 0) >= 2:
-                errors.append(
-                    f"node {node!r} is not electrically connected to ground"
-                )
+                errors.append(f"node {node!r} is not electrically connected to ground")
 
     return errors
 
@@ -199,7 +200,7 @@ def _nodes_reachable_from(netlist: Netlist, seeds: set[str]) -> set[str]:
             c.node for c in netlist.connections_of(el.id) if c.node in adjacency
         ]
         for i, a in enumerate(el_nodes):
-            for b in el_nodes[i + 1:]:
+            for b in el_nodes[i + 1 :]:
                 adjacency[a].add(b)
                 adjacency[b].add(a)
 

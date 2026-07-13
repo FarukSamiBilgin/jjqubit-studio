@@ -24,17 +24,27 @@ This module does no physics of its own: it only calls into ``core.netlist``
 and ``core.solvers.*`` and displays what comes back, per the GUI/core split
 in ``CLAUDE.md``.
 """
+
 from __future__ import annotations
 
 import json
 import subprocess
 import sys
 import tempfile
+from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any
 
+from core.netlist import (
+    Netlist,
+    NetlistError,
+    ValidationError,
+    dump,
+    from_dict,
+    to_dict,
+)
 from PySide6.QtCore import QObject, QThread, Signal
 from PySide6.QtGui import QAction, QCloseEvent
 from PySide6.QtWidgets import (
@@ -50,14 +60,6 @@ from PySide6.QtWidgets import (
     QToolBar,
 )
 
-from core.netlist import (
-    Netlist,
-    NetlistError,
-    ValidationError,
-    dump,
-    from_dict,
-    to_dict,
-)
 from gui.schematic import SchematicEditor
 from gui.waveform import WaveformViewer
 
@@ -135,7 +137,7 @@ class LastRunInfo:
         }
 
     @classmethod
-    def from_dict(cls, data: Any) -> "LastRunInfo":
+    def from_dict(cls, data: Any) -> LastRunInfo:
         """Build a :class:`LastRunInfo` from a mapping.
 
         Raises:
@@ -166,7 +168,7 @@ class ProjectState:
 
     netlist: Netlist
     app_version: str = APP_VERSION
-    last_run: Optional[LastRunInfo] = None
+    last_run: LastRunInfo | None = None
 
 
 def project_to_dict(state: ProjectState) -> dict[str, Any]:
@@ -206,7 +208,9 @@ def project_from_dict(data: Any) -> ProjectState:
         raise ProjectError("project file is missing 'netlist'")
     netlist = from_dict(netlist_data)
     last_run_data = data.get("last_run")
-    last_run = LastRunInfo.from_dict(last_run_data) if last_run_data is not None else None
+    last_run = (
+        LastRunInfo.from_dict(last_run_data) if last_run_data is not None else None
+    )
     return ProjectState(
         netlist=netlist,
         app_version=str(data.get("app_version", "")),
@@ -214,7 +218,9 @@ def project_from_dict(data: Any) -> ProjectState:
     )
 
 
-def save_project(state: ProjectState, path: str | Path, *, validate: bool = False) -> None:
+def save_project(
+    state: ProjectState, path: str | Path, *, validate: bool = False
+) -> None:
     """Write ``state`` to ``path`` as a ``.jjq`` project file (UTF-8 JSON).
 
     Args:
@@ -310,7 +316,11 @@ def _make_cli_solver_runner(module: str, display_name: str) -> SolverRunner:
         )
         report(90, f"{display_name} finished, checking result...")
         if proc.returncode != 0:
-            detail = proc.stderr.strip() or proc.stdout.strip() or f"exit code {proc.returncode}"
+            detail = (
+                proc.stderr.strip()
+                or proc.stdout.strip()
+                or f"exit code {proc.returncode}"
+            )
             raise RuntimeError(f"{display_name} failed: {detail}")
         if not Path(output_path).exists():
             raise RuntimeError(
@@ -369,9 +379,7 @@ class SolverWorker(QThread):
     def run(self) -> None:  # noqa: D102 - QThread.run() override
         runner = SOLVER_RUNNERS.get(self.solver_name)
         if runner is None:
-            self.failed.emit(
-                f"Solver {self.solver_name!r} is not wired up yet."
-            )
+            self.failed.emit(f"Solver {self.solver_name!r} is not wired up yet.")
             return
 
         def report(percent: int, message: str) -> None:
@@ -392,7 +400,7 @@ class SolverWorker(QThread):
 
 def _utc_now_iso() -> str:
     """Current UTC time as an ISO-8601 string (seconds precision)."""
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(UTC).isoformat(timespec="seconds")
 
 
 # ---------------------------------------------------------------------------
@@ -416,9 +424,9 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(APP_NAME)
 
         self.project = ProjectState(netlist=Netlist(name="Untitled"))
-        self.current_path: Optional[str] = None
+        self.current_path: str | None = None
         self._dirty = False
-        self._worker: Optional[SolverWorker] = None
+        self._worker: SolverWorker | None = None
 
         self.schematic = SchematicEditor()
         self.results_panel = WaveformViewer()
@@ -430,7 +438,9 @@ class MainWindow(QMainWindow):
         # gui/schematic/property_panel.py's docstring. Both must be wired up
         # for "unsaved changes" tracking to be accurate.
         self.schematic.scene.model_changed.connect(self._mark_dirty)
-        self.schematic.properties.param_changed.connect(lambda *_args: self._mark_dirty())
+        self.schematic.properties.param_changed.connect(
+            lambda *_args: self._mark_dirty()
+        )
 
         self._build_ui()
         self._update_title()
@@ -676,7 +686,9 @@ class MainWindow(QMainWindow):
         dump(netlist, netlist_path, validate=True)
 
         if self.current_path:
-            output_path = str(Path(self.current_path).with_suffix("")) + f".{solver_name}.h5"
+            output_path = (
+                str(Path(self.current_path).with_suffix("")) + f".{solver_name}.h5"
+            )
         else:
             output_path = str(run_dir / f"result_{solver_name}.h5")
 
@@ -709,7 +721,9 @@ class MainWindow(QMainWindow):
             # it (e.g. an HDF5 layout it does not yet recognize) -- the run
             # itself still succeeded, so record it as such and surface the
             # display problem separately rather than as a run failure.
-            display_message = f"Run complete: {output_path} (could not display result: {exc})"
+            display_message = (
+                f"Run complete: {output_path} (could not display result: {exc})"
+            )
             QMessageBox.warning(
                 self,
                 "Result produced but could not be displayed",
@@ -760,7 +774,9 @@ class MainWindow(QMainWindow):
 
 def main(argv: list[str] | None = None) -> int:
     """Launch JJQubit Studio; returns the Qt event loop's exit code."""
-    app = QApplication.instance() or QApplication(argv if argv is not None else sys.argv)
+    app = QApplication.instance() or QApplication(
+        argv if argv is not None else sys.argv
+    )
     window = MainWindow()
     window.resize(1400, 900)
     window.show()

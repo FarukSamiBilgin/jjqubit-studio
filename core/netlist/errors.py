@@ -12,6 +12,7 @@ The distinct subclasses let teammates react to specific failure modes:
   semantically invalid (floating node, no ground, missing parameter, wrong
   parameter dimension, ...). Carries the full list of problems in ``.errors``.
 """
+
 from __future__ import annotations
 
 

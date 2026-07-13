@@ -5,6 +5,7 @@ resolution (see ``items.GRID_SIZE``) and handles zoom (mouse wheel / Ctrl+
 wheel) and pan (middle-mouse drag, or space+left-drag). No netlist state
 lives here.
 """
+
 from __future__ import annotations
 
 from PySide6.QtCore import QRectF, Qt
@@ -103,7 +104,9 @@ class SchematicView(QGraphicsView):
 
     def mousePressEvent(self, event: QMouseEvent) -> None:  # noqa: D102 - Qt override
         if event.button() == Qt.MiddleButton:
-            self._pan_start = event.position() if hasattr(event, "position") else event.pos()
+            self._pan_start = (
+                event.position() if hasattr(event, "position") else event.pos()
+            )
             self.setCursor(Qt.ClosedHandCursor)
             event.accept()
             return

@@ -4,6 +4,7 @@ Confirms the solver runs headlessly from the command line against both
 bundled example netlists, per docs/task.md Gorev 2 ("GUI'siz, komut
 satirindan calisabilir olmali") and the Definition of Done.
 """
+
 from __future__ import annotations
 
 import subprocess
@@ -11,7 +12,6 @@ import sys
 
 import h5py
 import pytest
-
 from core.solvers.classical.cli import main
 
 
@@ -39,7 +39,9 @@ class TestCliInProcess:
             assert f["readout"].attrs["f0_GHz"] == pytest.approx(7.2)
 
     def test_missing_netlist_file_returns_nonzero_without_raising(self, tmp_path):
-        exit_code = main([str(tmp_path / "does_not_exist.json"), str(tmp_path / "out.h5")])
+        exit_code = main(
+            [str(tmp_path / "does_not_exist.json"), str(tmp_path / "out.h5")]
+        )
         assert exit_code != 0
         assert not (tmp_path / "out.h5").exists()
 
@@ -58,7 +60,13 @@ class TestCliAsSubprocess:
         netlist_path = examples_dir / "rcsj_bias.json"
         out_path = tmp_path / "subprocess_rcsj.h5"
         result = subprocess.run(
-            [sys.executable, "-m", "core.solvers.classical", str(netlist_path), str(out_path)],
+            [
+                sys.executable,
+                "-m",
+                "core.solvers.classical",
+                str(netlist_path),
+                str(out_path),
+            ],
             cwd=examples_dir.parent,
             capture_output=True,
             text=True,
@@ -72,7 +80,13 @@ class TestCliAsSubprocess:
         netlist_path = examples_dir / "transmon_readout.json"
         out_path = tmp_path / "subprocess_readout.h5"
         result = subprocess.run(
-            [sys.executable, "-m", "core.solvers.classical", str(netlist_path), str(out_path)],
+            [
+                sys.executable,
+                "-m",
+                "core.solvers.classical",
+                str(netlist_path),
+                str(out_path),
+            ],
             cwd=examples_dir.parent,
             capture_output=True,
             text=True,

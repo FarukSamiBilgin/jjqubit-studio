@@ -9,6 +9,7 @@ forces the Qt "offscreen" platform plugin so widget tests can run headless
 Lives inside ``tests/waveform/`` (this module's owned scope) and touches
 nothing outside it.
 """
+
 from __future__ import annotations
 
 import os
@@ -26,14 +27,12 @@ EXAMPLES_DIR = REPO_ROOT / "examples"
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest  # noqa: E402 - must follow sys.path/env setup
-
+from classical_synthetic import write_synthetic_classical_hdf5  # noqa: E402
 from core.netlist import Netlist, load  # noqa: E402
 from core.solvers.quantum.dispersive import compute_dispersive_shift  # noqa: E402
 from core.solvers.quantum.hdf5_io import write_hdf5  # noqa: E402
 from core.solvers.quantum.quantization import quantize_circuit  # noqa: E402
 from core.solvers.quantum.spectrum import compute_transmon_spectrum  # noqa: E402
-
-from classical_synthetic import write_synthetic_classical_hdf5  # noqa: E402
 
 
 @pytest.fixture(scope="session")

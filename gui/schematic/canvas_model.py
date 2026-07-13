@@ -18,6 +18,7 @@ canvas -> netlist -> canvas does not preserve pixel positions -- only nodes,
 elements, params and wiring are guaranteed to survive. That is the full
 extent of what a lossless round trip means for this module.
 """
+
 from __future__ import annotations
 
 import itertools
@@ -331,7 +332,9 @@ def from_netlist(netlist: Netlist) -> CanvasModel:
     for i, node_id in enumerate(netlist.nodes):
         col = i % _GRID_COLUMNS
         row = i // _GRID_COLUMNS
-        model.add_node(x=col * _GRID_SPACING_X, y=row * _GRID_SPACING_Y, node_id=node_id)
+        model.add_node(
+            x=col * _GRID_SPACING_X, y=row * _GRID_SPACING_Y, node_id=node_id
+        )
 
     node_rows = (len(netlist.nodes) + _GRID_COLUMNS - 1) // _GRID_COLUMNS
     y_offset = (node_rows + 1) * _GRID_SPACING_Y

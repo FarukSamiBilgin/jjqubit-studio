@@ -12,6 +12,7 @@ Each tab is a self-contained view (:mod:`gui.waveform.s21_view`,
 CSV/PNG export; this widget only routes the loaded
 :class:`~gui.waveform.hdf5_reader.ClassicalResult` to them.
 """
+
 from __future__ import annotations
 
 from pathlib import Path

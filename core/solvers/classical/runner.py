@@ -6,13 +6,18 @@ with the topology/provenance the HDF5 writer needs. Kept separate from
 ``cli.py`` so the analysis can be exercised directly in tests without going
 through the command line.
 """
+
 from __future__ import annotations
 
 import numpy as np
-
 from core.netlist import Netlist
 
-from .rcsj import IVCurveResult, PhaseDynamicsResult, integrate_phase_dynamics, sweep_iv_curve
+from .rcsj import (
+    IVCurveResult,
+    PhaseDynamicsResult,
+    integrate_phase_dynamics,
+    sweep_iv_curve,
+)
 from .s21 import S21Curve, compute_s21_curve
 from .topology import (
     RCSJTopology,

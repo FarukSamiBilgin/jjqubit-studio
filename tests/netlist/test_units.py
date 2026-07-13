@@ -1,10 +1,11 @@
 """Tests for the Quantity type and unit registry."""
+
 from __future__ import annotations
 
+import dataclasses
 import math
 
 import pytest
-
 from core.netlist import (
     Quantity,
     SchemaError,
@@ -28,15 +29,18 @@ def test_quantity_coerces_int_to_float():
     assert qty.value == 3.0
 
 
-@pytest.mark.parametrize("value,unit,expected_si", [
-    (5.0, "GHz", 5e9),
-    (2.0, "fF", 2e-15),
-    (30.0, "nA", 30e-9),
-    (10.0, "kohm", 1e4),
-    (6.0, "mm", 6e-3),
-    (1.0, "ns", 1e-9),
-    (8000.0, "", 8000.0),
-])
+@pytest.mark.parametrize(
+    "value,unit,expected_si",
+    [
+        (5.0, "GHz", 5e9),
+        (2.0, "fF", 2e-15),
+        (30.0, "nA", 30e-9),
+        (10.0, "kohm", 1e4),
+        (6.0, "mm", 6e-3),
+        (1.0, "ns", 1e-9),
+        (8000.0, "", 8000.0),
+    ],
+)
 def test_to_si_conversion(value, unit, expected_si):
     assert math.isclose(Quantity(value, unit).to_si(), expected_si, rel_tol=1e-12)
 
@@ -83,5 +87,5 @@ def test_quantity_from_dict_rejects_bad_structure():
 
 def test_quantity_is_immutable():
     qty = Quantity(1.0, "GHz")
-    with pytest.raises(Exception):
+    with pytest.raises(dataclasses.FrozenInstanceError):
         qty.value = 2.0  # frozen dataclass

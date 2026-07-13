@@ -6,10 +6,12 @@ to one ``CanvasNode``, and every ``WireItem`` to one ``CanvasWire``. Moving an
 item snaps to the grid and updates any attached wires; no netlist or physics
 logic lives here -- that stays in ``canvas_model.py``.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from core.netlist import ELEMENT_TYPES
 from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPen
 from PySide6.QtWidgets import (
@@ -20,8 +22,6 @@ from PySide6.QtWidgets import (
     QStyleOptionGraphicsItem,
     QWidget,
 )
-
-from core.netlist import ELEMENT_TYPES
 
 if TYPE_CHECKING:
     from .scene import SchematicScene
@@ -52,7 +52,7 @@ class TerminalHandle(QGraphicsEllipseItem):
     gesture; the handle itself holds no netlist state.
     """
 
-    def __init__(self, element_item: "ElementItem", terminal: int, name: str) -> None:
+    def __init__(self, element_item: ElementItem, terminal: int, name: str) -> None:
         r = TERMINAL_RADIUS
         super().__init__(-r, -r, 2 * r, 2 * r, parent=element_item)
         self.element_item = element_item
@@ -85,8 +85,7 @@ class TerminalHandle(QGraphicsEllipseItem):
         if scene is None or not hasattr(scene, "model"):
             return False
         return (
-            scene.model.node_of(self.element_item.element_id, self.terminal)
-            is not None
+            scene.model.node_of(self.element_item.element_id, self.terminal) is not None
         )
 
 
@@ -160,9 +159,7 @@ class ElementItem(QGraphicsObject):
         painter.drawRoundedRect(rect, 6, 6)
         painter.setPen(QPen(Qt.white))
         painter.setFont(QFont("Segoe UI", 8))
-        painter.drawText(
-            rect, Qt.AlignCenter, f"{self.type_name}\n{self.element_id}"
-        )
+        painter.drawText(rect, Qt.AlignCenter, f"{self.type_name}\n{self.element_id}")
 
     # -- movement / grid snap ---------------------------------------------
 
@@ -241,7 +238,9 @@ class WireItem(QGraphicsLineItem):
     touches moves (see :meth:`update_line`).
     """
 
-    def __init__(self, element_item: ElementItem, terminal: int, node_item: NodeItem) -> None:
+    def __init__(
+        self, element_item: ElementItem, terminal: int, node_item: NodeItem
+    ) -> None:
         super().__init__()
         self.element_item = element_item
         self.terminal = terminal

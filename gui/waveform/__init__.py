@@ -22,6 +22,7 @@ Public entry point for other teammates (e.g. ``app-core``, Task #6):
 
     from gui.waveform import WaveformViewer
 """
+
 from __future__ import annotations
 
 from .energy_level_view import EnergyLevelView

@@ -4,13 +4,14 @@ Populated directly from ``core.netlist.ELEMENT_TYPES`` -- adding a new element
 type to the frozen registry makes it appear here with no code change needed.
 Drag an entry onto the canvas to place that element type.
 """
+
 from __future__ import annotations
 
+from core.netlist import ELEMENT_TYPES
 from PySide6.QtCore import QMimeData, Qt
 from PySide6.QtGui import QDrag
 from PySide6.QtWidgets import QListWidget, QListWidgetItem
 
-from core.netlist import ELEMENT_TYPES
 from .scene import ELEMENT_TYPE_MIME
 
 # Human-friendly labels for the palette; falls back to the raw type name.

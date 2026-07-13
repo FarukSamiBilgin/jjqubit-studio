@@ -5,18 +5,18 @@ netlist WIRING (nodes_of / terminals_on_node / ground_nodes), never from
 hardcoded element ids -- so a differently-named-but-isomorphic netlist would
 be handled identically.
 """
+
 from __future__ import annotations
 
 import pytest
-
 from core.netlist import Connection, Element, Netlist, Quantity
-from quantum_helpers import make_transmon_only_netlist, make_transmon_resonator_netlist
 from core.solvers.quantum.topology import (
     TopologyError,
     extract_coupling_topology,
     extract_qubit_topology,
     extract_resonator_topology,
 )
+from quantum_helpers import make_transmon_only_netlist, make_transmon_resonator_netlist
 
 
 class TestQubitTopology:
@@ -26,7 +26,9 @@ class TestQubitTopology:
         assert qubit.island_node == "q"
         assert qubit.ground_node == "gnd"
 
-    def test_capacitor_ids_are_every_capacitor_on_the_island_node(self, transmon_netlist):
+    def test_capacitor_ids_are_every_capacitor_on_the_island_node(
+        self, transmon_netlist
+    ):
         qubit = extract_qubit_topology(transmon_netlist)
         # In examples/transmon_readout.json, node "q" also carries the shunt
         # cap Cs and the coupling cap Cg (but NOT Ck, which sits on node "r").
@@ -48,7 +50,9 @@ class TestQubitTopology:
                         "Rn": Quantity(10.0, "kohm"),
                     },
                 ),
-                Element(id="shunt", type="capacitor", params={"C": Quantity(70.0, "fF")}),
+                Element(
+                    id="shunt", type="capacitor", params={"C": Quantity(70.0, "fF")}
+                ),
                 Element(id="gnd_marker", type="ground", params={}),
             ],
             connections=[

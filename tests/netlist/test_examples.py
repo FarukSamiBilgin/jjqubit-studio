@@ -1,10 +1,10 @@
 """Every netlist in examples/ must load, validate, and round-trip losslessly."""
+
 from __future__ import annotations
 
 import pathlib
 
 import pytest
-
 from core.netlist import dumps, load, loads
 
 EXAMPLES_DIR = pathlib.Path(__file__).resolve().parents[2] / "examples"

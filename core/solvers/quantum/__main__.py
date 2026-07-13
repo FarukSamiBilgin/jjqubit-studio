@@ -1,4 +1,5 @@
 """Entry point for ``python -m core.solvers.quantum <netlist.json> <output.h5>``."""
+
 from __future__ import annotations
 
 import sys

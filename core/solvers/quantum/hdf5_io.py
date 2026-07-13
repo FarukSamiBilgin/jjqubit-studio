@@ -35,6 +35,7 @@ scalar attrs) carries an explicit ``unit`` attribute, matching the
 for generic consumers that read units off the dataset rather than parsing
 its name.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -100,8 +101,12 @@ def write_hdf5(
             "Q"
         ].to_si()
         resonator_group.attrs["kappa_GHz"] = dispersive.kappa_GHz
-        resonator_group.attrs["resonator_id"] = quantization.resonator_topology.resonator.id
-        resonator_group.attrs["active_node"] = quantization.resonator_topology.active_node
+        resonator_group.attrs["resonator_id"] = (
+            quantization.resonator_topology.resonator.id
+        )
+        resonator_group.attrs["active_node"] = (
+            quantization.resonator_topology.active_node
+        )
 
         coupling_group = f.create_group("coupling")
         coupling_group.attrs["g_GHz"] = dispersive.g_GHz

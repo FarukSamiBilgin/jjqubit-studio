@@ -10,6 +10,7 @@ Consumes the schema-independent
 :func:`~gui.waveform.hdf5_reader.load_classical_result` fills from the
 finalized ``/readout`` group (Task #2).
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -134,10 +135,14 @@ class S21View(QWidget):
         if self.readout is None:
             raise ValueError("no readout loaded")
         fig, (ax_mag, ax_phase) = plt.subplots(2, 1, sharex=True, figsize=(6, 6))
-        ax_mag.plot(self.readout.frequency_GHz, self.readout.magnitude_dB, color="tab:blue")
+        ax_mag.plot(
+            self.readout.frequency_GHz, self.readout.magnitude_dB, color="tab:blue"
+        )
         ax_mag.set_ylabel("|S21| (dB)")
         ax_mag.grid(True, alpha=0.3)
-        ax_phase.plot(self.readout.frequency_GHz, self.readout.phase_deg, color="tab:orange")
+        ax_phase.plot(
+            self.readout.frequency_GHz, self.readout.phase_deg, color="tab:orange"
+        )
         ax_phase.set_ylabel("phase (deg)")
         ax_phase.set_xlabel("frequency (GHz)")
         ax_phase.grid(True, alpha=0.3)

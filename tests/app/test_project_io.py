@@ -3,15 +3,14 @@
 Covers the acceptance criterion "project can be saved and reopened", built
 directly against the frozen ``core.netlist`` contract -- no Qt/GUI required.
 """
+
 from __future__ import annotations
 
 import json
 import pathlib
 
 import pytest
-
 from core.netlist import ValidationError, load
-
 from gui.app import (
     APP_VERSION,
     PROJECT_FORMAT,
@@ -96,7 +95,9 @@ def test_save_without_validate_allows_invalid_netlist(tmp_path):
     invalid = Netlist(
         name="floating",
         nodes=["n1"],
-        elements=[Element(id="C1", type="capacitor", params={"C": Quantity(1.0, "fF")})],
+        elements=[
+            Element(id="C1", type="capacitor", params={"C": Quantity(1.0, "fF")})
+        ],
         connections=[],  # terminals unwired: invalid, but not schema-broken
     )
     state = ProjectState(netlist=invalid)
@@ -117,7 +118,9 @@ def test_save_with_validate_raises_and_does_not_write(tmp_path):
 
     invalid = Netlist(
         name="floating",
-        elements=[Element(id="C1", type="capacitor", params={"C": Quantity(1.0, "fF")})],
+        elements=[
+            Element(id="C1", type="capacitor", params={"C": Quantity(1.0, "fF")})
+        ],
     )
     state = ProjectState(netlist=invalid)
     path = tmp_path / "should_not_exist.jjq"
@@ -132,7 +135,9 @@ def test_save_with_validate_raises_and_does_not_write(tmp_path):
 
 def test_load_project_rejects_wrong_format(tmp_path):
     path = tmp_path / "bad.jjq"
-    path.write_text(json.dumps({"format": "something-else", "netlist": {}}), encoding="utf-8")
+    path.write_text(
+        json.dumps({"format": "something-else", "netlist": {}}), encoding="utf-8"
+    )
     with pytest.raises(ProjectError):
         load_project(path)
 

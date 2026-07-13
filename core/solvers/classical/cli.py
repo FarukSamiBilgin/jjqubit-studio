@@ -14,6 +14,7 @@ transmission_line + termination, e.g. ``examples/transmon_readout.json``), or
 both; whichever topology is present is computed, and only a netlist with
 NEITHER is an error.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -23,7 +24,12 @@ from pathlib import Path
 from core.netlist import NetlistError, load
 
 from .hdf5_io import write_hdf5
-from .runner import ReadoutAnalysis, RCSJAnalysis, run_rcsj_analysis, run_readout_analysis
+from .runner import (
+    RCSJAnalysis,
+    ReadoutAnalysis,
+    run_rcsj_analysis,
+    run_readout_analysis,
+)
 from .topology import TopologyError
 
 

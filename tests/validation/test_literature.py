@@ -13,6 +13,7 @@ empirical operating ranges of transmons, rather than to a single fabricated
 These give an independent sanity envelope for whatever solver-quantum computes
 from examples/transmon_readout.json.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -77,7 +78,7 @@ def test_capacitance_convention_both_give_valid_transmons():
     """
     ej_hz = ref.josephson_energy_hz(ref.EXAMPLE_IC_A)
     for c_sigma in (
-        ref.EXAMPLE_CJ_F + ref.EXAMPLE_CS_F,             # 72 fF
+        ref.EXAMPLE_CJ_F + ref.EXAMPLE_CS_F,  # 72 fF
         ref.EXAMPLE_CJ_F + ref.EXAMPLE_CS_F + ref.EXAMPLE_CG_F,  # 77 fF
     ):
         ec_hz = ref.charging_energy_hz(c_sigma)

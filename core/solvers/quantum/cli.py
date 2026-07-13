@@ -7,6 +7,7 @@ Usage::
 No PySide6 / GUI import anywhere in this module (project-wide rule) -- this
 must run standalone from the command line, per docs/task.md Gorev 3.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -63,11 +64,17 @@ def run(netlist_path: str, output_path: str) -> int:
     )
 
     print(f"Quantum solver: {netlist.name!r} -> {output_path}")
-    print(f"  Ej = {quantization.Ej_GHz:.4f} GHz, Ec = {quantization.Ec_GHz:.4f} GHz, "
-          f"Ej/Ec = {quantization.Ej_over_Ec:.2f}")
-    print(f"  E01 = {spectrum.E01_GHz:.4f} GHz, anharmonicity = {spectrum.anharmonicity_GHz:.4f} GHz")
-    print(f"  g = {dispersive.g_GHz * 1e3:.4f} MHz, chi = {dispersive.chi_GHz * 1e3:.4f} MHz, "
-          f"Delta = {dispersive.Delta_GHz:.4f} GHz")
+    print(
+        f"  Ej = {quantization.Ej_GHz:.4f} GHz, Ec = {quantization.Ec_GHz:.4f} GHz, "
+        f"Ej/Ec = {quantization.Ej_over_Ec:.2f}"
+    )
+    print(
+        f"  E01 = {spectrum.E01_GHz:.4f} GHz, anharmonicity = {spectrum.anharmonicity_GHz:.4f} GHz"
+    )
+    print(
+        f"  g = {dispersive.g_GHz * 1e3:.4f} MHz, chi = {dispersive.chi_GHz * 1e3:.4f} MHz, "
+        f"Delta = {dispersive.Delta_GHz:.4f} GHz"
+    )
     return 0
 
 

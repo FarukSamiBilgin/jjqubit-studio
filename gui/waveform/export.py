@@ -5,6 +5,7 @@ arrays and dicts (not pyqtgraph items), so this module has no dependency on
 a live plot widget and is trivially testable headlessly -- no ``QApplication``
 or offscreen platform plugin needed to exercise it.
 """
+
 from __future__ import annotations
 
 import csv
@@ -48,11 +49,11 @@ def export_series_csv(
     with out_path.open("w", newline="", encoding="utf-8") as fh:
         writer = csv.writer(fh)
         writer.writerow([x_label, *columns.keys()])
-        for row in zip(x, *columns.values()):
+        for row in zip(x, *columns.values(), strict=True):
             writer.writerow(list(row))
 
 
-def save_figure_png(fig: "plt.Figure", path: str | Path) -> None:
+def save_figure_png(fig: plt.Figure, path: str | Path) -> None:
     """Save a matplotlib ``Figure`` to ``path`` as PNG, then close it.
 
     Closing the figure after saving avoids leaking matplotlib figures across

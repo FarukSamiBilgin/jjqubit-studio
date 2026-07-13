@@ -15,6 +15,7 @@ MVP scope (see docs/task.md, Gorev 3): exactly one ``junction`` element and
 exactly one ``resonator`` element per netlist. Multi-qubit / multi-resonator
 circuits are out of scope (docs/task.md, "Kapsam disi").
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -94,7 +95,9 @@ def _single_ground_node(netlist: Netlist) -> str:
     """
     grounds = set(netlist.ground_nodes())
     if len(grounds) == 0:
-        raise TopologyError("netlist has no 'ground' element; cannot identify the 0V reference")
+        raise TopologyError(
+            "netlist has no 'ground' element; cannot identify the 0V reference"
+        )
     if len(grounds) > 1:
         raise TopologyError(
             f"netlist has {len(grounds)} distinct ground nodes {sorted(grounds)}; "
@@ -144,7 +147,8 @@ def extract_qubit_topology(netlist: Netlist) -> QubitTopology:
     capacitor_ids = tuple(
         c.element
         for c in netlist.terminals_on_node(island_node)
-        if (el := netlist.element_by_id(c.element)) is not None and el.type == "capacitor"
+        if (el := netlist.element_by_id(c.element)) is not None
+        and el.type == "capacitor"
     )
     return QubitTopology(
         junction=junction,
@@ -190,7 +194,9 @@ def extract_resonator_topology(netlist: Netlist) -> ResonatorTopology:
             f"one terminal on ground node {ground_node!r} and one on the active node"
         )
     active_node = next(iter(non_ground))
-    return ResonatorTopology(resonator=resonator, active_node=active_node, ground_node=ground_node)
+    return ResonatorTopology(
+        resonator=resonator, active_node=active_node, ground_node=ground_node
+    )
 
 
 def extract_coupling_topology(

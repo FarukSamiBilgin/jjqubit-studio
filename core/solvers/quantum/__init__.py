@@ -19,6 +19,7 @@ Pipeline
 
 CLI: ``python -m core.solvers.quantum <netlist.json> <output.h5>``
 """
+
 from __future__ import annotations
 
 from .dispersive import DispersiveResult, compute_dispersive_shift, dressed_chi_ghz

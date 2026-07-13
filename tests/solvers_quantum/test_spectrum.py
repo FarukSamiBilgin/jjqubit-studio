@@ -15,13 +15,13 @@ we do not reimplement the CPB/transmon Hamiltonian); these tests check that
 OUR wrapper reports scqubits' results correctly and that the well-known
 physical trends hold.
 """
+
 from __future__ import annotations
 
 import math
 
 import pytest
 import scqubits as scq
-
 from core.solvers.quantum.spectrum import compute_transmon_spectrum
 
 
@@ -49,7 +49,7 @@ class TestTransmonLimitAnharmonicity:
         # Deviation from the ideal -Ec limit should shrink monotonically as
         # Ej/Ec grows (this is the actual "convergence to the known analytic
         # limit" check CLAUDE.md asks for).
-        for earlier, later in zip(deviations, deviations[1:]):
+        for earlier, later in zip(deviations, deviations[1:], strict=False):
             assert later < earlier
         # And it should get tight (single-digit percent) at large Ej/Ec.
         assert deviations[-1] < 0.05
@@ -97,7 +97,7 @@ class TestCooperPairBoxLimit:
                 - compute_transmon_spectrum(Ej, Ec, ng=0.5).E01_GHz
             )
             dispersions.append(d)
-        for earlier, later in zip(dispersions, dispersions[1:]):
+        for earlier, later in zip(dispersions, dispersions[1:], strict=False):
             assert later < earlier
 
 
@@ -106,12 +106,14 @@ class TestSpectrumApiContract:
         spectrum = compute_transmon_spectrum(15.0, 0.25, n_levels=6)
         levels = spectrum.energy_levels_GHz
         assert levels[0] == 0.0
-        assert all(b >= a for a, b in zip(levels, levels[1:]))
+        assert all(b >= a for a, b in zip(levels, levels[1:], strict=False))
         assert len(levels) == 6
 
     def test_e01_matches_first_energy_level(self):
         spectrum = compute_transmon_spectrum(15.0, 0.25)
-        assert spectrum.E01_GHz == pytest.approx(spectrum.energy_levels_GHz[1], rel=1e-9)
+        assert spectrum.E01_GHz == pytest.approx(
+            spectrum.energy_levels_GHz[1], rel=1e-9
+        )
 
     def test_anharmonicity_matches_level_differences(self):
         spectrum = compute_transmon_spectrum(15.0, 0.25)
@@ -128,7 +130,9 @@ class TestSpectrumApiContract:
         with pytest.raises(ValueError):
             compute_transmon_spectrum(15.0, 0.25, n_levels=n_levels)
 
-    @pytest.mark.parametrize("Ej,Ec", [(0.0, 0.25), (15.0, 0.0), (-1.0, 0.25), (15.0, -0.25)])
+    @pytest.mark.parametrize(
+        "Ej,Ec", [(0.0, 0.25), (15.0, 0.0), (-1.0, 0.25), (15.0, -0.25)]
+    )
     def test_nonpositive_energies_rejected(self, Ej, Ec):
         with pytest.raises(ValueError):
             compute_transmon_spectrum(Ej, Ec)

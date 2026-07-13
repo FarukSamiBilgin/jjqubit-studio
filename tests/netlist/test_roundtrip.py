@@ -1,8 +1,8 @@
 """Round-trip serialize/deserialize tests: must be lossless."""
+
 from __future__ import annotations
 
 import pytest
-
 from core.netlist import (
     FORMAT,
     SchemaError,
@@ -14,7 +14,6 @@ from core.netlist import (
     loads,
     to_dict,
 )
-
 from helpers import valid_netlist
 
 

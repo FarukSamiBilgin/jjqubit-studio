@@ -13,6 +13,7 @@ anharmonicity/(-Ec) -> 1 as Ej/Ec grows.
 Grounding: from-scratch charge-basis diagonalization (this module's reference),
 cross-checked against scqubits; Koch et al. 2007 eq. 2.5.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -29,7 +30,7 @@ def test_scratch_reference_matches_scqubits():
     transitions.
     """
     scq = pytest.importorskip("scqubits")
-    ej = ref.josephson_energy_hz(ref.EXAMPLE_IC_A) / 1e9   # GHz for scqubits
+    ej = ref.josephson_energy_hz(ref.EXAMPLE_IC_A) / 1e9  # GHz for scqubits
     ec = ref.charging_energy_hz(ref.EXAMPLE_C_SIGMA_F) / 1e9
     tmon = scq.Transmon(EJ=ej, EC=ec, ng=0.0, ncut=40)
     evals = tmon.eigenvals(evals_count=3)
@@ -37,7 +38,7 @@ def test_scratch_reference_matches_scqubits():
     e12_scq = (evals[2] - evals[1]) * 1e9
 
     r = ref.transmon_reference(ej * 1e9, ec * 1e9)
-    assert np.isclose(r.e01_hz, e01_scq, rtol=0, atol=1e3)   # within 1 kHz
+    assert np.isclose(r.e01_hz, e01_scq, rtol=0, atol=1e3)  # within 1 kHz
     assert np.isclose(r.e12_hz, e12_scq, rtol=0, atol=1e3)
 
 
@@ -49,8 +50,8 @@ def test_reference_transmon_anharmonicity_near_minus_ec():
     the physically correct band -- NOT a tight equality.
     """
     r = ref.example_transmon_reference()
-    assert r.anharmonicity_hz < 0.0                      # transmon is anharmonic downward
-    assert r.ej_ec_ratio > 30.0                          # genuinely in transmon regime
+    assert r.anharmonicity_hz < 0.0  # transmon is anharmonic downward
+    assert r.ej_ec_ratio > 30.0  # genuinely in transmon regime
     rel_err = abs(r.anharmonicity_hz / (-r.ec_hz) - 1.0)
     assert rel_err < 0.15
     # And it is more negative than -Ec (approaches from below), not less.
@@ -73,7 +74,7 @@ def test_anharmonicity_converges_to_minus_ec_as_ej_ec_grows():
     # Monotone decrease toward 1 (always >= 1: exact |alpha| >= Ec).
     for a in approach:
         assert a >= 1.0 - 1e-6
-    assert all(x2 <= x1 + 1e-9 for x1, x2 in zip(approach, approach[1:]))
+    assert all(x2 <= x1 + 1e-9 for x1, x2 in zip(approach, approach[1:], strict=False))
     # Deep in the transmon limit, within 3%.
     assert approach[-1] < 1.03
 

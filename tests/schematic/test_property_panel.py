@@ -5,12 +5,11 @@ one field pair per parameter, unit choices restricted to the parameter's
 declared dimension -- for every one of the 8 MVP element types, and that
 edits are written back into the canvas model with the correct dimension.
 """
+
 from __future__ import annotations
 
 import pytest
-
 from core.netlist import ELEMENT_TYPES, unit_dimension
-
 from gui.schematic.canvas_model import CanvasModel
 from gui.schematic.property_panel import PropertyPanel
 

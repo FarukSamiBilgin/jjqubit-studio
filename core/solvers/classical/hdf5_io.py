@@ -60,6 +60,7 @@ At least one of ``/rcsj``/``/readout`` is present; a netlist lacking both
 topologies is a :class:`~core.solvers.classical.topology.TopologyError`
 raised upstream in ``cli.py`` before this module is reached.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -68,7 +69,7 @@ import h5py
 import numpy as np
 
 from .rcsj import plasma_frequency_rad_s
-from .runner import ReadoutAnalysis, RCSJAnalysis
+from .runner import RCSJAnalysis, ReadoutAnalysis
 from .s21 import DEFAULT_RESONATOR_IMPEDANCE_OHM
 
 FORMAT = "jjqubit-classical-result"
@@ -103,7 +104,9 @@ def _write_rcsj_group(f: h5py.File, rcsj: RCSJAnalysis) -> None:
     time_ds.attrs["unit"] = "ns"
     phase_ds = dynamics_group.create_dataset("phase_rad", data=dynamics.phase_rad)
     phase_ds.attrs["unit"] = "rad"
-    voltage_ds = dynamics_group.create_dataset("voltage_uV", data=dynamics.voltage_v * 1e6)
+    voltage_ds = dynamics_group.create_dataset(
+        "voltage_uV", data=dynamics.voltage_v * 1e6
+    )
     voltage_ds.attrs["unit"] = "uV"
     dynamics_group.attrs["bias_current_nA"] = dynamics.bias_current_a * 1e9
     dynamics_group.attrs["dc_voltage_uV"] = dynamics.dc_voltage_v * 1e6
@@ -148,9 +151,13 @@ def _write_readout_group(f: h5py.File, readout: ReadoutAnalysis) -> None:
     real_ds.attrs["unit"] = ""
     imag_ds = group.create_dataset("s21_imag", data=curve.s21.imag)
     imag_ds.attrs["unit"] = ""
-    mag_db_ds = group.create_dataset("s21_mag_db", data=20.0 * np.log10(np.abs(curve.s21)))
+    mag_db_ds = group.create_dataset(
+        "s21_mag_db", data=20.0 * np.log10(np.abs(curve.s21))
+    )
     mag_db_ds.attrs["unit"] = "dB"
-    phase_ds = group.create_dataset("s21_phase_deg", data=np.degrees(np.angle(curve.s21)))
+    phase_ds = group.create_dataset(
+        "s21_phase_deg", data=np.degrees(np.angle(curve.s21))
+    )
     phase_ds.attrs["unit"] = "deg"
 
 
@@ -176,7 +183,9 @@ def write_hdf5(
         ValueError: if both ``rcsj`` and ``readout`` are ``None`` (nothing to write).
     """
     if rcsj is None and readout is None:
-        raise ValueError("write_hdf5: nothing to write (both rcsj and readout are None)")
+        raise ValueError(
+            "write_hdf5: nothing to write (both rcsj and readout are None)"
+        )
 
     with h5py.File(path, "w") as f:
         f.attrs["format"] = FORMAT
@@ -191,7 +200,9 @@ def write_hdf5(
 
         assumptions_group = f.create_group("assumptions")
         if readout is not None:
-            assumptions_group.attrs["resonator_impedance_ohm"] = DEFAULT_RESONATOR_IMPEDANCE_OHM
+            assumptions_group.attrs["resonator_impedance_ohm"] = (
+                DEFAULT_RESONATOR_IMPEDANCE_OHM
+            )
             assumptions_group.attrs["resonator_impedance_note"] = (
                 "resonator element only specifies f0 and Q (no impedance/capacitance); "
                 f"Z_r = {DEFAULT_RESONATOR_IMPEDANCE_OHM} ohm assumed to derive its lumped "

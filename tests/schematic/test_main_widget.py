@@ -5,15 +5,14 @@ Covers the "definition of done" acceptance path end to end at the widget
 level: build the widget, load an example netlist file, edit a parameter,
 save it back out, and confirm the file round-trips through ``core.netlist``.
 """
+
 from __future__ import annotations
 
 import json
 import pathlib
 
 import pytest
-
 from core.netlist import ELEMENT_TYPES, Quantity, load
-
 from gui.schematic.library_panel import LibraryPanel
 from gui.schematic.main_widget import SchematicEditor
 from gui.schematic.scene import ELEMENT_TYPE_MIME
@@ -72,7 +71,14 @@ def test_editor_loads_example_netlist(qapp):
     editor = SchematicEditor()
     editor.load_netlist_file(str(EXAMPLES_DIR / "transmon_readout.json"))
     assert set(editor.scene.element_items) == {
-        "J1", "Cs", "Cg", "RES1", "Ck", "TL1", "Rload", "GND1",
+        "J1",
+        "Cs",
+        "Cg",
+        "RES1",
+        "Ck",
+        "TL1",
+        "Rload",
+        "GND1",
     }
 
 

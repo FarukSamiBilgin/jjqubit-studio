@@ -4,6 +4,7 @@ Loads a REAL quantum-solver HDF5 file (``quantum_result_h5`` fixture, built
 from the actual Task #3 pipeline) and checks the ladder diagram, channel
 toggle, and CSV/PNG export.
 """
+
 from __future__ import annotations
 
 from gui.waveform.energy_level_view import EnergyLevelView
@@ -71,4 +72,6 @@ class TestEnergyLevelView:
         except ValueError:
             pass
         else:
-            raise AssertionError("expected ValueError when exporting with no result loaded")
+            raise AssertionError(
+                "expected ValueError when exporting with no result loaded"
+            )
