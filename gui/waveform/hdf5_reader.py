@@ -149,6 +149,12 @@ class QuantumResult:
     resonator_Z0_ohm: float
     assumptions_note: str
 
+    # /coherence (NaN when the file predates coherence output)
+    T1_us: float
+    T2_us: float
+    Tphi_us: float
+    temperature_K: float
+
 
 def load_quantum_result(path: str | Path) -> QuantumResult:
     """Load a quantum-solver HDF5 file (see module docstring) into a :class:`QuantumResult`.
@@ -209,7 +215,19 @@ def load_quantum_result(path: str | Path) -> QuantumResult:
             ),
             resonator_Z0_ohm=float(assumptions.attrs["resonator_Z0_ohm"]),
             assumptions_note=str(assumptions.attrs["note"]),
+            # /coherence is optional (added in format 1.2); NaN if absent.
+            T1_us=_coherence_attr(f, "T1_us"),
+            T2_us=_coherence_attr(f, "T2_us"),
+            Tphi_us=_coherence_attr(f, "Tphi_us"),
+            temperature_K=_coherence_attr(f, "temperature_K"),
         )
+
+
+def _coherence_attr(f: h5py.File, name: str) -> float:
+    """Read a scalar from the optional /coherence group, or NaN if absent."""
+    if "coherence" not in f:
+        return float("nan")
+    return float(f["coherence"].attrs.get(name, float("nan")))
 
 
 @dataclass(frozen=True)

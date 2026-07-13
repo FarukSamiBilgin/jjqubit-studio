@@ -17,6 +17,7 @@ from pathlib import Path
 from core.netlist import NetlistError, load
 from core.provenance import netlist_sha256
 
+from .coherence import compute_coherence
 from .dispersive import compute_dispersive_shift
 from .hdf5_io import write_hdf5
 from .quantization import quantize_circuit
@@ -51,6 +52,7 @@ def run(netlist_path: str, output_path: str) -> int:
         quantization = quantize_circuit(netlist)
         spectrum = compute_transmon_spectrum(quantization.Ej_GHz, quantization.Ec_GHz)
         dispersive = compute_dispersive_shift(quantization, spectrum)
+        coherence = compute_coherence(quantization)
     except TopologyError as exc:
         print(f"error: unsupported netlist topology: {exc}", file=sys.stderr)
         return 1
@@ -62,6 +64,7 @@ def run(netlist_path: str, output_path: str) -> int:
         quantization=quantization,
         spectrum=spectrum,
         dispersive=dispersive,
+        coherence=coherence,
         netlist_hash=netlist_sha256(netlist),
     )
 
@@ -76,6 +79,10 @@ def run(netlist_path: str, output_path: str) -> int:
     print(
         f"  g = {dispersive.g_GHz * 1e3:.4f} MHz, chi = {dispersive.chi_GHz * 1e3:.4f} MHz, "
         f"Delta = {dispersive.Delta_GHz:.4f} GHz"
+    )
+    print(
+        f"  T1 = {coherence.T1_us:.2f} us, T2 = {coherence.T2_us:.2f} us "
+        f"(at {coherence.temperature_K * 1e3:.0f} mK)"
     )
     return 0
 

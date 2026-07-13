@@ -5,7 +5,7 @@ solver-output convention, not part of the frozen netlist contract, so it is
 agreed directly between the producing and consuming teammates)::
 
     / (root)
-      attrs: format="jjqubit-quantum-result", version="1.1",
+      attrs: format="jjqubit-quantum-result", version="1.2",
              generated_by="core.solvers.quantum", netlist_name=<str>
 
     /provenance  (group)
@@ -36,6 +36,11 @@ agreed directly between the producing and consuming teammates)::
     /assumptions  (group)
       attrs: resonator_Z0_ohm, note (free-text explanation, see dispersive.py)
 
+    /coherence  (group, present when coherence was computed)
+      attrs: T1_us, T2_us, Tphi_us, temperature_K, plus per-channel
+             t1_<channel>_us / tphi_<channel>_us (scqubits effective channels).
+             See core/solvers/quantum/coherence.py.
+
 Every physical dataset/attr name is suffixed with its unit (``_GHz``,
 ``_fF``, ``_nA``, ``_ohm``); dimensionless quantities have no suffix
 (``Q``, ``beta``, ``Ej_over_Ec``, ``n01``). In addition, every DATASET (not
@@ -52,13 +57,15 @@ from pathlib import Path
 import h5py
 from core.provenance import write_provenance
 
+from .coherence import CoherenceResult
 from .dispersive import DispersiveResult
 from .quantization import QubitQuantization
 from .spectrum import TransmonSpectrum
 
 FORMAT = "jjqubit-quantum-result"
-# 1.0 -> 1.1: added the /provenance group (additive, backward compatible).
-FORMAT_VERSION = "1.1"
+# 1.0 -> 1.1: added the /provenance group.
+# 1.1 -> 1.2: added the /coherence group. All additive, backward compatible.
+FORMAT_VERSION = "1.2"
 
 # Libraries whose versions are worth recording for a quantum run.
 _PROVENANCE_LIBS = ("numpy", "scipy", "h5py", "scqubits", "qutip")
@@ -71,6 +78,7 @@ def write_hdf5(
     quantization: QubitQuantization,
     spectrum: TransmonSpectrum,
     dispersive: DispersiveResult,
+    coherence: CoherenceResult | None = None,
     netlist_hash: str | None = None,
 ) -> None:
     """Write quantum-solver results to an HDF5 file (see module docstring for layout).
@@ -84,6 +92,9 @@ def write_hdf5(
             :func:`core.solvers.quantum.spectrum.compute_transmon_spectrum`.
         dispersive: Result of
             :func:`core.solvers.quantum.dispersive.compute_dispersive_shift`.
+        coherence: Optional result of
+            :func:`core.solvers.quantum.coherence.compute_coherence`; written to
+            a ``/coherence`` group when present.
         netlist_hash: Optional SHA-256 of the source netlist
             (:func:`core.provenance.netlist_sha256`), recorded in
             ``/provenance`` for reproducibility.
@@ -165,3 +176,15 @@ def write_hdf5(
             "(standard on-chip CPW design impedance, matches transmission_line.Z0 "
             "in the bundled examples). See core/solvers/quantum/dispersive.py."
         )
+
+        if coherence is not None:
+            coherence_group = f.create_group("coherence")
+            coherence_group.attrs["T1_us"] = coherence.T1_us
+            coherence_group.attrs["T2_us"] = coherence.T2_us
+            coherence_group.attrs["Tphi_us"] = coherence.Tphi_us
+            coherence_group.attrs["temperature_K"] = coherence.temperature_K
+            # channel names already carry their t1_/tphi_ prefix.
+            for channel, t1_us in coherence.t1_channels_us.items():
+                coherence_group.attrs[f"{channel}_us"] = t1_us
+            for channel, tphi_us in coherence.tphi_channels_us.items():
+                coherence_group.attrs[f"{channel}_us"] = tphi_us

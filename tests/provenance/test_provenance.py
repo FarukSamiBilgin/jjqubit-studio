@@ -104,11 +104,12 @@ def read_provenance_file(path):
 class TestSolverIntegration:
     def test_quantum_result_carries_provenance(self, tmp_path):
         import jjqubit
+        from core.solvers.quantum.hdf5_io import FORMAT_VERSION
 
         out = tmp_path / "q.h5"
         jjqubit.solve_quantum(TRANSMON).write_hdf5(out)
         with h5py.File(out, "r") as f:
-            assert f.attrs["version"] == "1.1"
+            assert f.attrs["version"] == FORMAT_VERSION
             assert PROVENANCE_GROUP in f
             prov = read_provenance(f)
         assert prov["generated_by"] == "core.solvers.quantum"
@@ -117,11 +118,12 @@ class TestSolverIntegration:
 
     def test_classical_result_carries_provenance(self, tmp_path):
         import jjqubit
+        from core.solvers.classical.hdf5_io import FORMAT_VERSION
 
         out = tmp_path / "c.h5"
         jjqubit.solve_classical(RCSJ).write_hdf5(out)
         with h5py.File(out, "r") as f:
-            assert f.attrs["version"] == "1.1"
+            assert f.attrs["version"] == FORMAT_VERSION
             assert PROVENANCE_GROUP in f
             prov = read_provenance(f)
         assert prov["generated_by"] == "core.solvers.classical"

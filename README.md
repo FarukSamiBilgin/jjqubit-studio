@@ -106,6 +106,7 @@ net = jjqubit.load_netlist("examples/transmon_readout.json")
 
 q = jjqubit.solve_quantum(net)
 print(q.Ej_over_Ec, q.E01_GHz, q.anharmonicity_GHz, q.chi_MHz)
+print(q.T1_us, q.T2_us)            # scqubits-based coherence estimates
 q.write_hdf5("out_quantum.h5")     # same HDF5 the waveform viewer reads
 
 c = jjqubit.solve_classical(net)

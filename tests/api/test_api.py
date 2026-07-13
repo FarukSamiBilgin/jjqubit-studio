@@ -77,6 +77,12 @@ class TestSolveQuantum:
         }
         assert all(isinstance(v, float) for v in s.values())
 
+    def test_exposes_coherence_estimates(self):
+        q = jjqubit.solve_quantum(TRANSMON)
+        assert q.T1_us > 0.0
+        assert 0.0 < q.T2_us <= 2.0 * q.T1_us + 1e-6
+        assert q.coherence.temperature_K > 0.0
+
     def test_accepts_path_or_netlist_object_identically(self):
         from_path = jjqubit.solve_quantum(TRANSMON)
         net = jjqubit.load_netlist(TRANSMON)

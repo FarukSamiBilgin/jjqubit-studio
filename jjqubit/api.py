@@ -17,6 +17,7 @@ from core.netlist import Netlist, load
 
 if TYPE_CHECKING:  # avoid importing the heavy solver modules at import time
     from core.solvers.classical.runner import RCSJAnalysis, ReadoutAnalysis
+    from core.solvers.quantum.coherence import CoherenceResult
     from core.solvers.quantum.dispersive import DispersiveResult
     from core.solvers.quantum.quantization import QubitQuantization
     from core.solvers.quantum.spectrum import TransmonSpectrum
@@ -62,6 +63,7 @@ class QuantumSolution:
     quantization: QubitQuantization
     spectrum: TransmonSpectrum
     dispersive: DispersiveResult
+    coherence: CoherenceResult
 
     # --- convenience passthroughs (no recomputation, just plain accessors) ---
     @property
@@ -115,6 +117,21 @@ class QuantumSolution:
         return self.dispersive.Delta_GHz
 
     @property
+    def T1_us(self) -> float:
+        """Estimated relaxation time T1, in microseconds."""
+        return self.coherence.T1_us
+
+    @property
+    def T2_us(self) -> float:
+        """Estimated Ramsey coherence time T2, in microseconds."""
+        return self.coherence.T2_us
+
+    @property
+    def Tphi_us(self) -> float:
+        """Estimated pure dephasing time Tphi, in microseconds (inf if none)."""
+        return self.coherence.Tphi_us
+
+    @property
     def g_over_Delta(self) -> float:
         """Dispersive small parameter |g/Delta| (must be << 1 for validity)."""
         return self.dispersive.g_over_Delta
@@ -149,6 +166,7 @@ class QuantumSolution:
             quantization=self.quantization,
             spectrum=self.spectrum,
             dispersive=self.dispersive,
+            coherence=self.coherence,
             netlist_hash=netlist_sha256(self.netlist),
         )
 
@@ -202,6 +220,7 @@ def solve_quantum(netlist: NetlistLike) -> QuantumSolution:
         core.netlist.NetlistError / OSError: if a path is given and it cannot
             be loaded or validated.
     """
+    from core.solvers.quantum.coherence import compute_coherence
     from core.solvers.quantum.dispersive import compute_dispersive_shift
     from core.solvers.quantum.quantization import quantize_circuit
     from core.solvers.quantum.spectrum import compute_transmon_spectrum
@@ -210,11 +229,13 @@ def solve_quantum(netlist: NetlistLike) -> QuantumSolution:
     quantization = quantize_circuit(net)
     spectrum = compute_transmon_spectrum(quantization.Ej_GHz, quantization.Ec_GHz)
     dispersive = compute_dispersive_shift(quantization, spectrum)
+    coherence = compute_coherence(quantization)
     return QuantumSolution(
         netlist=net,
         quantization=quantization,
         spectrum=spectrum,
         dispersive=dispersive,
+        coherence=coherence,
     )
 
 
