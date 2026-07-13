@@ -120,7 +120,12 @@ transmon across an external-flux arc:
 ```powershell
 python examples\sweep_transmon.py
 python examples\sweep_flux.py       # flux-tunable (squid) transmon
+python examples\sweep_coupling.py   # two coupled qubits: the avoided crossing
 ```
+
+Two capacitively-coupled qubits are solved with `jjqubit.solve_two_qubit`,
+which reports the bare frequencies, the single-excitation splitting, and the
+exchange coupling J (minimal 2J at resonance — the avoided crossing).
 
 ## Tests
 
