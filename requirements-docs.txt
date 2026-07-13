@@ -1,0 +1,12 @@
+# Documentation build dependencies for JJQubit Studio.
+#
+# Only MkDocs itself is required: the site uses the built-in `readthedocs`
+# theme (see mkdocs.yml), so no third-party theme package (e.g.
+# mkdocs-material) is needed. Install with:
+#
+#     .venv/Scripts/python.exe -m pip install -r requirements-docs.txt
+#
+# then build with:
+#
+#     .venv/Scripts/python.exe -m mkdocs build -f mkdocs.yml
+mkdocs>=1.5,<2.0

@@ -1,0 +1,25 @@
+site_name: JJQubit Studio
+site_description: >-
+  Documentation for JJQubit Studio, an interactive circuit simulator for
+  superconducting-qubit designers (schematic -> netlist -> solver -> HDF5 ->
+  waveform).
+
+# The site sources live under docs/site/ so this documentation does NOT collide
+# with the hand-authored docs/task.md and docs/netlist_schema.md (which are the
+# authoritative task brief and netlist contract, kept out of the built site).
+docs_dir: docs/site
+
+# Use a built-in theme so `mkdocs build` works with only `mkdocs` installed
+# (no mkdocs-material or other third-party theme package required).
+theme:
+  name: readthedocs
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Netlist Schema: schema.md
+  - Solvers (Quantum/Classical): solvers.md
+  - Scripting API: scripting.md
+  - Multi-qubit: multi-qubit.md
+  - Architecture: architecture.md
+  - Packaging: packaging.md
