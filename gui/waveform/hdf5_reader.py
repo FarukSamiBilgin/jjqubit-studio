@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 import h5py
 import numpy as np
@@ -35,6 +35,49 @@ QUANTUM_FORMAT = "jjqubit-quantum-result"
 CLASSICAL_FORMAT = "jjqubit-classical-result"
 
 ResultKind = Literal["quantum", "classical", "unknown"]
+
+# The major result-format version this reader understands. A file may carry a
+# higher MINOR (additive changes, e.g. the /provenance group added in 1.1) and
+# still load; a higher MAJOR signals an incompatible layout and is refused so a
+# newer file is not silently misread.
+SUPPORTED_MAJOR_VERSION = 1
+
+
+def _check_version(f: h5py.File, path: str | Path) -> None:
+    """Refuse files whose MAJOR format version exceeds what this reader supports.
+
+    Missing or unparseable version attrs are treated as compatible (legacy
+    pre-versioning files), so this only ever hard-fails on a genuinely newer
+    major layout.
+    """
+    raw = f.attrs.get("version")
+    if raw is None:
+        return
+    try:
+        major = int(str(raw).split(".", 1)[0])
+    except ValueError:
+        return
+    if major > SUPPORTED_MAJOR_VERSION:
+        raise ValueError(
+            f"{path!r}: result format version {str(raw)!r} is newer than this "
+            f"viewer supports (major <= {SUPPORTED_MAJOR_VERSION}); update JJQubit Studio."
+        )
+
+
+def read_provenance(path: str | Path) -> dict[str, Any]:
+    """Return the ``/provenance`` group's attrs as a dict (empty if absent).
+
+    Works for both quantum and classical result files; see
+    ``core/provenance.py`` for the attribute set.
+    """
+    with h5py.File(path, "r") as f:
+        if "provenance" not in f:
+            return {}
+        group = f["provenance"]
+        return {
+            k: (v.decode() if isinstance(v, bytes) else v)
+            for k, v in group.attrs.items()
+        }
 
 
 def detect_result_kind(path: str | Path) -> ResultKind:
@@ -118,6 +161,7 @@ def load_quantum_result(path: str | Path) -> QuantumResult:
             raise ValueError(
                 f"{path!r}: expected format {QUANTUM_FORMAT!r}, got {fmt!r}"
             )
+        _check_version(f, path)
         qubit = f["qubit"]
         resonator = f["resonator"]
         coupling = f["coupling"]
@@ -309,6 +353,7 @@ def load_classical_result(path: str | Path) -> ClassicalResult:
         OSError: if the file cannot be opened (propagated from h5py).
     """
     with h5py.File(path, "r") as f:
+        _check_version(f, path)
         readout = _read_readout(f["readout"]) if "readout" in f else None
         rcsj = _read_rcsj(f["rcsj"]) if "rcsj" in f else None
         if readout is None and rcsj is None:

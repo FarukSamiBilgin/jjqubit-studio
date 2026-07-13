@@ -22,6 +22,7 @@ import sys
 from pathlib import Path
 
 from core.netlist import NetlistError, load
+from core.provenance import netlist_sha256
 
 from .hdf5_io import write_hdf5
 from .runner import (
@@ -78,7 +79,13 @@ def run(netlist_path: str, output_path: str) -> int:
         return 1
 
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-    write_hdf5(output_path, netlist_name=netlist.name, rcsj=rcsj, readout=readout)
+    write_hdf5(
+        output_path,
+        netlist_name=netlist.name,
+        rcsj=rcsj,
+        readout=readout,
+        netlist_hash=netlist_sha256(netlist),
+    )
 
     print(f"Classical solver: {netlist.name!r} -> {output_path}")
     if rcsj is not None:

@@ -43,7 +43,13 @@ class TestHdf5Layout:
     def test_groups_present(self, written_file):
         path, _, _, _ = written_file
         with h5py.File(path, "r") as f:
-            assert set(f.keys()) == {"qubit", "resonator", "coupling", "assumptions"}
+            assert set(f.keys()) == {
+                "provenance",
+                "qubit",
+                "resonator",
+                "coupling",
+                "assumptions",
+            }
 
     def test_qubit_group(self, written_file):
         path, quantization, spectrum, _ = written_file

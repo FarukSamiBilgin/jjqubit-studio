@@ -15,6 +15,7 @@ import sys
 from pathlib import Path
 
 from core.netlist import NetlistError, load
+from core.provenance import netlist_sha256
 
 from .dispersive import compute_dispersive_shift
 from .hdf5_io import write_hdf5
@@ -61,6 +62,7 @@ def run(netlist_path: str, output_path: str) -> int:
         quantization=quantization,
         spectrum=spectrum,
         dispersive=dispersive,
+        netlist_hash=netlist_sha256(netlist),
     )
 
     print(f"Quantum solver: {netlist.name!r} -> {output_path}")

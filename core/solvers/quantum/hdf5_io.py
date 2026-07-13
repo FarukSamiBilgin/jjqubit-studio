@@ -5,8 +5,13 @@ solver-output convention, not part of the frozen netlist contract, so it is
 agreed directly between the producing and consuming teammates)::
 
     / (root)
-      attrs: format="jjqubit-quantum-result", version="1.0",
+      attrs: format="jjqubit-quantum-result", version="1.1",
              generated_by="core.solvers.quantum", netlist_name=<str>
+
+    /provenance  (group)
+      attrs: provenance_version, generated_by, created_at_utc, python_version,
+             platform, netlist_sha256 (when known), lib_<name>=<version> for
+             numpy/scipy/h5py/scqubits/qutip. See core/provenance.py.
 
     /qubit  (group)
       dataset: energy_levels          float64[n_levels], unit="GHz"
@@ -41,13 +46,18 @@ from __future__ import annotations
 from pathlib import Path
 
 import h5py
+from core.provenance import write_provenance
 
 from .dispersive import DispersiveResult
 from .quantization import QubitQuantization
 from .spectrum import TransmonSpectrum
 
 FORMAT = "jjqubit-quantum-result"
-FORMAT_VERSION = "1.0"
+# 1.0 -> 1.1: added the /provenance group (additive, backward compatible).
+FORMAT_VERSION = "1.1"
+
+# Libraries whose versions are worth recording for a quantum run.
+_PROVENANCE_LIBS = ("numpy", "scipy", "h5py", "scqubits", "qutip")
 
 
 def write_hdf5(
@@ -57,6 +67,7 @@ def write_hdf5(
     quantization: QubitQuantization,
     spectrum: TransmonSpectrum,
     dispersive: DispersiveResult,
+    netlist_hash: str | None = None,
 ) -> None:
     """Write quantum-solver results to an HDF5 file (see module docstring for layout).
 
@@ -69,12 +80,22 @@ def write_hdf5(
             :func:`core.solvers.quantum.spectrum.compute_transmon_spectrum`.
         dispersive: Result of
             :func:`core.solvers.quantum.dispersive.compute_dispersive_shift`.
+        netlist_hash: Optional SHA-256 of the source netlist
+            (:func:`core.provenance.netlist_sha256`), recorded in
+            ``/provenance`` for reproducibility.
     """
     with h5py.File(path, "w") as f:
         f.attrs["format"] = FORMAT
         f.attrs["version"] = FORMAT_VERSION
         f.attrs["generated_by"] = "core.solvers.quantum"
         f.attrs["netlist_name"] = netlist_name
+
+        write_provenance(
+            f,
+            generated_by="core.solvers.quantum",
+            netlist_hash=netlist_hash,
+            libraries=_PROVENANCE_LIBS,
+        )
 
         qubit_group = f.create_group("qubit")
         levels = qubit_group.create_dataset(

@@ -114,6 +114,7 @@ class QuantumSolution:
 
     def write_hdf5(self, path: str | Path) -> None:
         """Write the result in the same HDF5 layout the CLI and GUI use."""
+        from core.provenance import netlist_sha256
         from core.solvers.quantum.hdf5_io import write_hdf5
 
         Path(path).parent.mkdir(parents=True, exist_ok=True)
@@ -123,6 +124,7 @@ class QuantumSolution:
             quantization=self.quantization,
             spectrum=self.spectrum,
             dispersive=self.dispersive,
+            netlist_hash=netlist_sha256(self.netlist),
         )
 
 
@@ -142,6 +144,7 @@ class ClassicalSolution:
 
     def write_hdf5(self, path: str | Path) -> None:
         """Write the result in the same HDF5 layout the CLI and GUI use."""
+        from core.provenance import netlist_sha256
         from core.solvers.classical.hdf5_io import write_hdf5
 
         Path(path).parent.mkdir(parents=True, exist_ok=True)
@@ -150,6 +153,7 @@ class ClassicalSolution:
             netlist_name=self.netlist.name,
             rcsj=self.rcsj,
             readout=self.readout,
+            netlist_hash=netlist_sha256(self.netlist),
         )
 
 

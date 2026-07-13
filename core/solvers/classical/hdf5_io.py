@@ -7,8 +7,13 @@ agreed directly between the producing and consuming teammates, mirroring
 with unit-suffixed names, every dataset given an explicit ``unit`` attr)::
 
     / (root)
-      attrs: format="jjqubit-classical-result", version="1.0",
+      attrs: format="jjqubit-classical-result", version="1.1",
              generated_by="core.solvers.classical", netlist_name=<str>
+
+    /provenance  (group)
+      attrs: provenance_version, generated_by, created_at_utc, python_version,
+             platform, netlist_sha256 (when known), lib_<name>=<version> for
+             numpy/scipy/h5py. See core/provenance.py.
 
     /rcsj  (group, present iff the netlist has a current-biased junction --
             see core/solvers/classical/topology.py:extract_rcsj_topology)
@@ -67,13 +72,18 @@ from pathlib import Path
 
 import h5py
 import numpy as np
+from core.provenance import write_provenance
 
 from .rcsj import plasma_frequency_rad_s
 from .runner import RCSJAnalysis, ReadoutAnalysis
 from .s21 import DEFAULT_RESONATOR_IMPEDANCE_OHM
 
 FORMAT = "jjqubit-classical-result"
-FORMAT_VERSION = "1.0"
+# 1.0 -> 1.1: added the /provenance group (additive, backward compatible).
+FORMAT_VERSION = "1.1"
+
+# Libraries whose versions are worth recording for a classical run.
+_PROVENANCE_LIBS = ("numpy", "scipy", "h5py")
 
 
 def _write_rcsj_group(f: h5py.File, rcsj: RCSJAnalysis) -> None:
@@ -167,6 +177,7 @@ def write_hdf5(
     netlist_name: str,
     rcsj: RCSJAnalysis | None = None,
     readout: ReadoutAnalysis | None = None,
+    netlist_hash: str | None = None,
 ) -> None:
     """Write classical-solver results to an HDF5 file (see module docstring for layout).
 
@@ -178,6 +189,9 @@ def write_hdf5(
         readout: Result of
             :func:`core.solvers.classical.runner.run_readout_analysis`, or
             ``None`` if the netlist had no readout topology.
+        netlist_hash: Optional SHA-256 of the source netlist
+            (:func:`core.provenance.netlist_sha256`), recorded in
+            ``/provenance`` for reproducibility.
 
     Raises:
         ValueError: if both ``rcsj`` and ``readout`` are ``None`` (nothing to write).
@@ -192,6 +206,13 @@ def write_hdf5(
         f.attrs["version"] = FORMAT_VERSION
         f.attrs["generated_by"] = "core.solvers.classical"
         f.attrs["netlist_name"] = netlist_name
+
+        write_provenance(
+            f,
+            generated_by="core.solvers.classical",
+            netlist_hash=netlist_hash,
+            libraries=_PROVENANCE_LIBS,
+        )
 
         if rcsj is not None:
             _write_rcsj_group(f, rcsj)
