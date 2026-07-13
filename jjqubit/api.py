@@ -19,6 +19,10 @@ if TYPE_CHECKING:  # avoid importing the heavy solver modules at import time
     from core.solvers.classical.runner import RCSJAnalysis, ReadoutAnalysis
     from core.solvers.quantum.coherence import CoherenceResult
     from core.solvers.quantum.dispersive import DispersiveResult
+    from core.solvers.quantum.multiqubit import (
+        TwoQubitQuantization,
+        TwoTransmonResult,
+    )
     from core.solvers.quantum.quantization import QubitQuantization
     from core.solvers.quantum.spectrum import TransmonSpectrum
 
@@ -244,7 +248,75 @@ def solve_quantum(netlist: NetlistLike) -> QuantumSolution:
     )
 
 
-def solve_two_qubit(netlist: NetlistLike, *, evals_count: int = 6):
+@dataclass
+class TwoQubitSolution:
+    """Result of :func:`solve_two_qubit` for two capacitively-coupled qubits.
+
+    Bundles the netlist, the two-qubit quantization (Ej/Ec per qubit, coupling)
+    and the coupled spectrum, with convenience accessors and HDF5 output. See
+    :mod:`core.solvers.quantum.multiqubit`.
+    """
+
+    netlist: Netlist
+    quantization: TwoQubitQuantization
+    result: TwoTransmonResult
+
+    @property
+    def omega1_GHz(self) -> float:
+        return self.result.omega1_GHz
+
+    @property
+    def omega2_GHz(self) -> float:
+        return self.result.omega2_GHz
+
+    @property
+    def detuning_GHz(self) -> float:
+        return self.result.detuning_GHz
+
+    @property
+    def J_GHz(self) -> float:
+        """Exchange coupling J, in GHz."""
+        return self.result.J_GHz
+
+    @property
+    def J_MHz(self) -> float:
+        """Exchange coupling J, in MHz."""
+        return self.result.J_GHz * 1e3
+
+    @property
+    def one_excitation_splitting_GHz(self) -> float:
+        return self.result.one_excitation_splitting_GHz
+
+    @property
+    def zz_MHz(self) -> float:
+        """Static ZZ interaction, in MHz (NaN at exact resonance)."""
+        return self.result.zz_MHz
+
+    @property
+    def g_MHz(self) -> float:
+        """Charge-charge coupling coefficient g, in MHz."""
+        return self.quantization.g_GHz * 1e3
+
+    @property
+    def Cc_fF(self) -> float:
+        """Coupling capacitance, in fF."""
+        return self.quantization.Cc_fF
+
+    def write_hdf5(self, path: str | Path) -> None:
+        """Write the two-qubit result in its HDF5 layout (with provenance)."""
+        from core.provenance import netlist_sha256
+        from core.solvers.quantum.multiqubit import write_two_qubit_hdf5
+
+        write_two_qubit_hdf5(
+            str(path),
+            netlist_name=self.netlist.name,
+            quantization=self.quantization,
+            result=self.result,
+            netlist_hash=netlist_sha256(self.netlist),
+        )
+
+
+def solve_two_qubit(netlist: NetlistLike, *, evals_count: int = 6) -> TwoQubitSolution:
     """Solve a two-capacitively-coupled-transmon netlist for its coupled spectrum.
 
     Quantizes the two qubits and their coupling capacitor and diagonalizes the
@@ -257,18 +329,29 @@ def solve_two_qubit(netlist: NetlistLike, *, evals_count: int = 6):
         evals_count: Number of joint eigenvalues to return.
 
     Returns:
-        A ``core.solvers.quantum.multiqubit.TwoTransmonResult`` (bare
-        frequencies, single-excitation splitting, exchange coupling J, and the
-        low-lying coupled levels).
+        A :class:`TwoQubitSolution` (bare frequencies, single-excitation
+        splitting, exchange coupling J, static ZZ, and the coupled levels).
 
     Raises:
         core.solvers.quantum.topology.TopologyError: if the netlist is not a
             valid two-qubit coupled topology.
     """
-    from core.solvers.quantum.multiqubit import solve_two_qubit_netlist
+    from core.solvers.quantum.multiqubit import (
+        compute_two_transmon_spectrum,
+        quantize_two_qubit_circuit,
+    )
 
     net = _as_netlist(netlist)
-    return solve_two_qubit_netlist(net, evals_count=evals_count)
+    quantization = quantize_two_qubit_circuit(net)
+    result = compute_two_transmon_spectrum(
+        quantization.Ej1_GHz,
+        quantization.Ec1_GHz,
+        quantization.Ej2_GHz,
+        quantization.Ec2_GHz,
+        quantization.g_GHz,
+        evals_count=evals_count,
+    )
+    return TwoQubitSolution(netlist=net, quantization=quantization, result=result)
 
 
 def solve_classical(netlist: NetlistLike) -> ClassicalSolution:

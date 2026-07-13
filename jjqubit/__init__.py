@@ -29,6 +29,7 @@ from __future__ import annotations
 from .api import (
     ClassicalSolution,
     QuantumSolution,
+    TwoQubitSolution,
     load_netlist,
     solve_classical,
     solve_quantum,
@@ -42,6 +43,7 @@ __version__ = "0.1.0"
 __all__ = [
     "ClassicalSolution",
     "QuantumSolution",
+    "TwoQubitSolution",
     "load_netlist",
     "solve_classical",
     "solve_quantum",

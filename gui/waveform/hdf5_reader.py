@@ -34,7 +34,10 @@ QUANTUM_FORMAT = "jjqubit-quantum-result"
 # classical-result format string.
 CLASSICAL_FORMAT = "jjqubit-classical-result"
 
-ResultKind = Literal["quantum", "classical", "unknown"]
+# Matches core.solvers.quantum.multiqubit.TWO_QUBIT_FORMAT.
+TWO_QUBIT_FORMAT = "jjqubit-two-qubit-result"
+
+ResultKind = Literal["quantum", "classical", "two_qubit", "unknown"]
 
 # The major result-format version this reader understands. A file may carry a
 # higher MINOR (additive changes, e.g. the /provenance group added in 1.1) and
@@ -94,6 +97,11 @@ def detect_result_kind(path: str | Path) -> ResultKind:
             return "quantum"
         if fmt == CLASSICAL_FORMAT:
             return "classical"
+        if fmt == TWO_QUBIT_FORMAT:
+            return "two_qubit"
+        # Structural fallbacks when the format attr is missing/unexpected.
+        if "coupled" in f and "qubits" in f:
+            return "two_qubit"
         if "qubit" in f:
             return "quantum"
         if "rcsj" in f or "readout" in f:
@@ -403,4 +411,64 @@ def load_classical_result(path: str | Path) -> ClassicalResult:
             netlist_name=str(f.attrs.get("netlist_name", "")),
             readout=readout,
             rcsj=rcsj,
+        )
+
+
+@dataclass(frozen=True)
+class TwoQubitResult:
+    """Everything needed from a two-qubit-solver HDF5 file. Energies in GHz."""
+
+    netlist_name: str
+
+    # /qubits
+    Ej1_GHz: float
+    Ec1_GHz: float
+    Ej2_GHz: float
+    Ec2_GHz: float
+    g_GHz: float
+    Cc_fF: float
+
+    # /coupled
+    omega1_GHz: float
+    omega2_GHz: float
+    detuning_GHz: float
+    J_GHz: float
+    one_excitation_splitting_GHz: float
+    zz_MHz: float
+    coupled_levels_GHz: np.ndarray
+
+
+def load_two_qubit_result(path: str | Path) -> TwoQubitResult:
+    """Load a two-qubit-solver HDF5 file into a :class:`TwoQubitResult`.
+
+    Raises:
+        ValueError: if the file is not a two-qubit result.
+        OSError: if the file cannot be opened.
+    """
+    with h5py.File(path, "r") as f:
+        fmt = f.attrs.get("format")
+        if fmt != TWO_QUBIT_FORMAT:
+            raise ValueError(
+                f"{path!r}: expected format {TWO_QUBIT_FORMAT!r}, got {fmt!r}"
+            )
+        _check_version(f, path)
+        qubits = f["qubits"]
+        coupled = f["coupled"]
+        return TwoQubitResult(
+            netlist_name=str(f.attrs.get("netlist_name", "")),
+            Ej1_GHz=float(qubits.attrs["Ej1_GHz"]),
+            Ec1_GHz=float(qubits.attrs["Ec1_GHz"]),
+            Ej2_GHz=float(qubits.attrs["Ej2_GHz"]),
+            Ec2_GHz=float(qubits.attrs["Ec2_GHz"]),
+            g_GHz=float(qubits.attrs["g_GHz"]),
+            Cc_fF=float(qubits.attrs["Cc_fF"]),
+            omega1_GHz=float(coupled.attrs["omega1_GHz"]),
+            omega2_GHz=float(coupled.attrs["omega2_GHz"]),
+            detuning_GHz=float(coupled.attrs["detuning_GHz"]),
+            J_GHz=float(coupled.attrs["J_GHz"]),
+            one_excitation_splitting_GHz=float(
+                coupled.attrs["one_excitation_splitting_GHz"]
+            ),
+            zz_MHz=float(coupled.attrs["zz_MHz"]),
+            coupled_levels_GHz=np.asarray(coupled["coupled_levels_GHz"][:]),
         )

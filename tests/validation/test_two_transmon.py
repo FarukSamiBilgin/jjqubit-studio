@@ -215,3 +215,22 @@ class TestStaticZZ:
         weak = compute_two_transmon_spectrum(15.0, EC, 13.0, EC, g_GHz=0.03)
         strong = compute_two_transmon_spectrum(15.0, EC, 13.0, EC, g_GHz=0.06)
         assert abs(strong.zz_MHz) > abs(weak.zz_MHz)
+
+
+class TestTwoQubitHdf5RoundTrip:
+    def test_solution_writes_and_reader_loads(self, tmp_path):
+        import jjqubit
+        from gui.waveform.hdf5_reader import (
+            detect_result_kind,
+            load_two_qubit_result,
+        )
+
+        sol = jjqubit.solve_two_qubit(_two_qubit_netlist(Ic1=30.0, Ic2=26.0))
+        out = tmp_path / "tq.h5"
+        sol.write_hdf5(out)
+        assert detect_result_kind(out) == "two_qubit"
+        r = load_two_qubit_result(out)
+        assert r.J_GHz == pytest.approx(sol.J_GHz, rel=1e-9)
+        assert r.g_GHz == pytest.approx(sol.quantization.g_GHz, rel=1e-9)
+        assert r.zz_MHz == pytest.approx(sol.zz_MHz, rel=1e-6)
+        assert len(r.coupled_levels_GHz) == 6

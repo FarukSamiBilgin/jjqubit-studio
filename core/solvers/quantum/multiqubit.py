@@ -26,10 +26,13 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from pathlib import Path
 
+import h5py
 import numpy as np
 import scqubits as scq
 from core.netlist import Netlist
+from core.provenance import write_provenance
 from scipy.constants import e as _ELEMENTARY_CHARGE
 from scipy.constants import h as _PLANCK_H
 
@@ -39,6 +42,11 @@ from .topology import TwoQubitTopology, extract_two_qubit_topology
 # Charge-basis truncation and per-transmon level truncation for the joint space.
 _NCUT = 30
 _LEVELS_EACH = 4
+
+# HDF5 result format for two-qubit runs (distinct from the single-qubit format).
+TWO_QUBIT_FORMAT = "jjqubit-two-qubit-result"
+TWO_QUBIT_FORMAT_VERSION = "1.0"
+_PROVENANCE_LIBS = ("numpy", "scipy", "h5py", "scqubits", "qutip")
 
 
 @dataclass(frozen=True)
@@ -265,3 +273,67 @@ def _static_zz_mhz(hilbert_space: scq.HilbertSpace) -> float:
     e11 = energy(1, 1)
     zz_ghz = e11 - e10 - e01 + e00
     return zz_ghz * 1e3  # GHz -> MHz
+
+
+def write_two_qubit_hdf5(
+    path: str | Path,
+    *,
+    netlist_name: str,
+    quantization: TwoQubitQuantization,
+    result: TwoTransmonResult,
+    netlist_hash: str | None = None,
+) -> None:
+    """Write a two-qubit result to HDF5.
+
+    Layout::
+
+        / (root)   attrs: format, version, generated_by, netlist_name
+        /provenance                  (see core/provenance.py)
+        /qubits    attrs: Ej1_GHz, Ec1_GHz, Ej2_GHz, Ec2_GHz, g_GHz, Cc_fF
+        /coupled   attrs: omega1_GHz, omega2_GHz, detuning_GHz, J_GHz,
+                          one_excitation_splitting_GHz, zz_MHz
+                   dataset: coupled_levels_GHz (float64[n], unit="GHz")
+
+    Args:
+        path: Output file path (parent directory created if needed).
+        netlist_name: The source netlist's name.
+        quantization: Result of :func:`quantize_two_qubit_circuit`.
+        result: Result of :func:`compute_two_transmon_spectrum` /
+            :func:`solve_two_qubit_netlist`.
+        netlist_hash: Optional SHA-256 of the source netlist for provenance.
+    """
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    with h5py.File(path, "w") as f:
+        f.attrs["format"] = TWO_QUBIT_FORMAT
+        f.attrs["version"] = TWO_QUBIT_FORMAT_VERSION
+        f.attrs["generated_by"] = "core.solvers.quantum.multiqubit"
+        f.attrs["netlist_name"] = netlist_name
+
+        write_provenance(
+            f,
+            generated_by="core.solvers.quantum.multiqubit",
+            netlist_hash=netlist_hash,
+            libraries=_PROVENANCE_LIBS,
+        )
+
+        qubits = f.create_group("qubits")
+        qubits.attrs["Ej1_GHz"] = quantization.Ej1_GHz
+        qubits.attrs["Ec1_GHz"] = quantization.Ec1_GHz
+        qubits.attrs["Ej2_GHz"] = quantization.Ej2_GHz
+        qubits.attrs["Ec2_GHz"] = quantization.Ec2_GHz
+        qubits.attrs["g_GHz"] = quantization.g_GHz
+        qubits.attrs["Cc_fF"] = quantization.Cc_fF
+
+        coupled = f.create_group("coupled")
+        coupled.attrs["omega1_GHz"] = result.omega1_GHz
+        coupled.attrs["omega2_GHz"] = result.omega2_GHz
+        coupled.attrs["detuning_GHz"] = result.detuning_GHz
+        coupled.attrs["J_GHz"] = result.J_GHz
+        coupled.attrs["one_excitation_splitting_GHz"] = (
+            result.one_excitation_splitting_GHz
+        )
+        coupled.attrs["zz_MHz"] = result.zz_MHz
+        levels = coupled.create_dataset(
+            "coupled_levels_GHz", data=np.asarray(result.coupled_levels_GHz)
+        )
+        levels.attrs["unit"] = "GHz"
