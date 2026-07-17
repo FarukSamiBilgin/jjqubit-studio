@@ -22,3 +22,6 @@ Use the netlist schema as given. If it can't express what you need, message the 
 owner — do not edit `core/netlist/` yourself.
 
 Public functions get type hints and docstrings with units. Run `pytest` before reporting done.
+
+Never run git. You may be one of several agents running at once, and the lead serializes all
+commits. Leave your work in the tree and describe it; the lead commits it.

@@ -24,3 +24,6 @@ If a module you depend on is missing an API you need, say what you need and to w
 than working around it locally.
 
 Run `pytest` before reporting done.
+
+Never run git — not even the build scripts you own. You may be one of several agents running
+at once, and the lead serializes all commits. Leave your work in the tree and describe it.

@@ -21,3 +21,6 @@ over it in the view layer.
 Need a change to the HDF5 result layout? Message the solver owner who writes it.
 
 Run `pytest` before reporting done.
+
+Never run git. You may be one of several agents running at once, and the lead serializes all
+commits. Leave your work in the tree and describe it; the lead commits it.

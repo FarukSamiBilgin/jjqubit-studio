@@ -22,3 +22,6 @@ Need a netlist schema change? Message netlist-core. Need a wiring change in the 
 Message app-core.
 
 Run `pytest` before reporting done.
+
+Never run git. You may be one of several agents running at once, and the lead serializes all
+commits. Leave your work in the tree and describe it; the lead commits it.

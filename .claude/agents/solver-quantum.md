@@ -24,3 +24,6 @@ Physics discipline — a passing test does not mean the number is right:
 `core/` never imports PySide6. Run headless from the command line.
 Need a schema change? Message netlist-core — don't edit their folder.
 Run `pytest` before reporting done.
+
+Never run git. You may be one of several agents running at once, and the lead serializes all
+commits. Leave your work in the tree and describe it; the lead commits it.
