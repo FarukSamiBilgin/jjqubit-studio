@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "JJQubit Studio: a schematic-to-solver circuit simulator for superconducting qubits"
+authors:
+  - family-names: Bilgin
+    given-names: Faruk Sami
+    orcid: "https://orcid.org/0009-0001-9064-4410"
+license: MIT
+repository-code: "https://github.com/FarukSamiBilgin/jjqubit-studio"
+date-released: 2026-11-15

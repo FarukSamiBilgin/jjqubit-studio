@@ -134,6 +134,24 @@ Two capacitively-coupled qubits are solved with `jjqubit.solve_two_qubit`,
 which reports the bare frequencies, the single-excitation splitting, and the
 exchange coupling J (minimal 2J at resonance — the avoided crossing).
 
+## Physics validation
+
+Passing unit tests does not establish that a numerical result is correct, so
+`tests/validation/` checks every solver against independent references:
+
+| Test file | Reference |
+| --- | --- |
+| `test_transmon_limit.py` | Transmon limit (E_J/E_C >> 1): anharmonicity approaches -E_C |
+| `test_cpb_limit.py` | E_J/E_C -> 0: Cooper-pair-box behaviour vs. a from-scratch charge-basis reference |
+| `test_dispersive_chi.py` | Dispersive shift chi converges to the analytic expression (correct multi-level form) |
+| `test_rcsj.py` | RCSJ zero-voltage branch for I < I_c, via an independent from-scratch ODE integrator |
+| `test_solver_classical.py`, `test_solver_quantum.py` | Live comparison of both solver pipelines against the independent references in `reference.py` |
+| `test_tunable_transmon.py` | Flux-tunable (SQUID) transmon, asymmetric E_J(flux) |
+| `test_two_transmon.py` | Avoided crossing of two coupled transmons, splitting = 2 sqrt((Delta/2)^2 + J^2) |
+| `test_literature.py` | Analytic expressions and scaling laws of Koch et al., PRA 76, 042319 (2007) |
+| `test_coherence.py` | Physical sanity of T1/T2 estimates (e.g. T2 <= 2 T1) |
+| `test_units.py` | Netlist unit registry and dimensional correctness of derived energies |
+
 ## Tests
 
 ```powershell
@@ -197,3 +215,20 @@ criteria. The MVP vertical slice is complete:
 
 The full test suite (362 tests, including the `tests/validation` analytic-limit
 checks) passes end to end.
+
+## AI assistance
+
+AI assistance: AI coding assistants were used for code development and for adversarial review. All load-bearing results were re-derived by independent methods and checked by automated tests; the author is responsible for every claim.
+
+The "teammates" mentioned above and in `CLAUDE.md` / `docs/task.md` (Turkish
+project brief and task breakdown) are AI coding agents, each owning one
+module, coordinated by the author.
+
+## Citation
+
+See `CITATION.cff`. Author: Faruk Sami Bilgin (ORCID
+[0009-0001-9064-4410](https://orcid.org/0009-0001-9064-4410)).
+
+## License
+
+MIT, see `LICENSE`.
